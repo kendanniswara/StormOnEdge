@@ -1,5 +1,6 @@
 package scheduler;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -52,18 +53,18 @@ public class SimpleScheduler implements IScheduler {
 
                     // find out the our "spout-supervisor" from the supervisor metadata
                     Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
-                    Collection<SupervisorDetails> specialSupervisors = new Collection<SupervisorDetails>();
+                    Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
                     for (SupervisorDetails supervisor : supervisors) {
                         Map meta = (Map) supervisor.getSchedulerMeta();
 
                         if (meta.get("name").equals("spout-supervisor")) {
-                            specialSupervisor.add(supervisor);
+                        	specialSupervisors.add(supervisor);
                         }
                     }
 
                     // found the special supervisor
-                    if (!specialSupervisor.isEmpty()) {
-                    	System.out.println("Found the spout-supervisor: " + specialSupervisor.size());
+                    if (!specialSupervisors.isEmpty()) {
+                    	System.out.println("Found the spout-supervisor: " + specialSupervisors.size());
 			for(SupervisorDetails supervisor : specialSupervisors)
 			{
 				List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);
@@ -101,18 +102,18 @@ public class SimpleScheduler implements IScheduler {
 
                     // find out the our "spout-supervisor" from the supervisor metadata
                     Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
-                    Collection<SupervisorDetails> specialSupervisors = new Collection<SupervisorDetails>();
+                    Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
                     for (SupervisorDetails supervisor : supervisors) {
                         Map meta = (Map) supervisor.getSchedulerMeta();
 
                         if (meta.get("name").equals("Level1Bolt-supervisor")) {
-                            specialSupervisor.add(supervisor);
+                        	specialSupervisors.add(supervisor);
                         }
                     }
 
                     // found the special supervisor
-                    if (!specialSupervisor.isEmpty()) {
-                    	System.out.println("Found the Level1Bolt-supervisor: " + specialSupervisor.size());
+                    if (!specialSupervisors.isEmpty()) {
+                    	System.out.println("Found the Level1Bolt-supervisor: " + specialSupervisors.size());
 			for(SupervisorDetails supervisor : specialSupervisors)
 			{
 				List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);
@@ -150,18 +151,18 @@ public class SimpleScheduler implements IScheduler {
 
                     // find out the our "spout-supervisor" from the supervisor metadata
                     Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
-                    Collection<SupervisorDetails> specialSupervisors = new Collection<SupervisorDetails>();
+                    Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
                     for (SupervisorDetails supervisor : supervisors) {
                         Map meta = (Map) supervisor.getSchedulerMeta();
 
                         if (meta.get("name").equals("Level2Bolt-supervisor")) {
-                            specialSupervisor.add(supervisor);
+                        	specialSupervisors.add(supervisor);
                         }
                     }
 
                     // found the special supervisor
-                    if (!specialSupervisor.isEmpty()) {
-                    	System.out.println("Found the Level2Bolt-supervisor: " + specialSupervisor.size());
+                    if (!specialSupervisors.isEmpty()) {
+                    	System.out.println("Found the Level2Bolt-supervisor: " + specialSupervisors.size());
 			for(SupervisorDetails supervisor : specialSupervisors)
 			{
 				List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);

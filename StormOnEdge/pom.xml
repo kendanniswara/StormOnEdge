@@ -3,4 +3,16 @@
   <groupId>StormOnEdge</groupId>
   <artifactId>StormOnEdge</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  <dependencies>
+  	<dependency>
+  		<groupId>org.clojure</groupId>
+  		<artifactId>clojure</artifactId>
+  		<version>1.5.0</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.apache.storm</groupId>
+  		<artifactId>storm-core</artifactId>
+  		<version>0.9.3</version>
+  	</dependency>
+  </dependencies>
 </project>

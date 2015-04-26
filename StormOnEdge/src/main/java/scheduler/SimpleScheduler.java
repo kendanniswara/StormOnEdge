@@ -21,7 +21,9 @@ public class SimpleScheduler implements IScheduler {
     public void schedule(Topologies topologies, Cluster cluster) {
 	System.out.println("DemoScheduler: begin scheduling");
         // Gets the topology which we want to schedule
-        TopologyDetails topology = topologies.getByName("storm-perf-test");
+    TopologyDetails topology = topologies.getByName("test_0");
+    
+    System.out.println("DemoScheduler: begin scheduling");
 
 	if (topology != null) {
 	

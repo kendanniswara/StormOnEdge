@@ -67,9 +67,6 @@ public class SimpleScheduler implements IScheduler {
                 Map meta = (Map) supervisor.getSchedulerMeta();
                 
                 workerClusterMap.addValues(meta.get("name"), cluster.getAvailableSlots(supervisor));
-                
-                List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(meta.get("name"));
-                System.out.println("Supervisor:" + meta.get("name") + " : " +  workers);
             }
             
             
@@ -85,12 +82,13 @@ public class SimpleScheduler implements IScheduler {
             {
             	//for example: messageSpout
             	System.out.println("Our " + executorKey  + " needs scheduling.");            	
-            	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.get(taskSupervisorPair.get(executorKey));
+            	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
             	List<ExecutorDetails> executors = componentToExecutors.get(executorKey);
             	
             	Iterator<WorkerSlot> workerIterator = workers.iterator();
             	Iterator<ExecutorDetails> executorIterator = executors.iterator();
             	
+            	//round -robin for all executors A to all supervisors B
             	while(executorIterator.hasNext() && workerIterator.hasNext())
             	{
             		WorkerSlot w = workerIterator.next();
@@ -101,12 +99,10 @@ public class SimpleScheduler implements IScheduler {
             		if(!workerIterator.hasNext())
             			workerIterator = workers.iterator();
             	}
-            	
-            	int idx = 0;
+                        	
             	for(Object ws : workerExecutors.keySet())
             	{
             		cluster.assign((WorkerSlot)ws, topology.getId(), (List<ExecutorDetails>) workerExecutors.getValues(ws));
-            		idx++;
             		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + ((WorkerSlot)ws).getNodeId() + ", " + ((WorkerSlot)ws).getPort() + "]");
             	}
             	

@@ -76,10 +76,10 @@ public class SimpleScheduler implements IScheduler {
             	System.out.println(key + ": " + workerClusterMap.getValues(clusterKey));
             }
             
-            MultiMap workerExecutors = new MultiMap();
-            
             for(String executorKey : taskSupervisorPair.keySet())
             {
+            	MultiMap workerExecutors = new MultiMap();
+            	
             	//for example: messageSpout
             	System.out.println("Our " + executorKey  + " needs scheduling.");            	
             	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));

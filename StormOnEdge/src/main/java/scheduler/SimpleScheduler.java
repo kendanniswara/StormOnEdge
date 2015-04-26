@@ -68,7 +68,7 @@ public class SimpleScheduler implements IScheduler {
                 
                 workerClusterMap.addValues(meta.get("name"), cluster.getAvailableSlots(supervisor));
                 
-                List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.get(meta.get("name"));
+                List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(meta.get("name"));
                 System.out.println("Supervisor:" + meta.get("name") + " : " +  workers);
             }
             
@@ -76,7 +76,7 @@ public class SimpleScheduler implements IScheduler {
             for(Object clusterKey : workerClusterMap.keySet())
             {
             	String key = (String)clusterKey;
-            	System.out.println(key + " " + workerClusterMap.getValues(clusterKey));
+            	System.out.println(key + ": " + workerClusterMap.getValues(clusterKey));
             }
             
             MultiMap workerExecutors = new MultiMap();
@@ -105,7 +105,7 @@ public class SimpleScheduler implements IScheduler {
             	int idx = 0;
             	for(Object ws : workerExecutors.keySet())
             	{
-            		cluster.assign((WorkerSlot)ws, topology.getId(), workerExecutors.getValues(ws));
+            		cluster.assign((WorkerSlot)ws, topology.getId(), (List<ExecutorDetails>) workerExecutors.getValues(ws));
             		idx++;
             		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + ((WorkerSlot)ws).getNodeId() + ", " + ((WorkerSlot)ws).getPort() + "]");
             	}

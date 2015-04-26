@@ -46,11 +46,11 @@ public class SimpleScheduler implements IScheduler {
 		///////////////////////////
 		///schedule InputSpout
 		///////////////////////////
-                if (!componentToExecutors.containsKey("InputSpout")) {
+                if (!componentToExecutors.containsKey("messageSpout")) {
                 	System.out.println("Our InputSpout DOES NOT NEED scheduling.");
                 } else {
                     System.out.println("Our InputSpout needs scheduling.");
-                    List<ExecutorDetails> executors = componentToExecutors.get("InputSpout");
+                    List<ExecutorDetails> executors = componentToExecutors.get("messageSpout");
 		    System.out.println("Number of InputSpout : " + executors.size());
 
                     // find out the our "spout-supervisor" from the supervisor metadata
@@ -95,11 +95,11 @@ public class SimpleScheduler implements IScheduler {
 		///////////////////////////
 		///schedule Level1Bolt
 		///////////////////////////
-                if (!componentToExecutors.containsKey("Level1Bolt")) {
+                if (!componentToExecutors.containsKey("messageBolt1")) {
                 	System.out.println("Our Level1Bolt DOES NOT NEED scheduling.");
                 } else {
                     System.out.println("Our Level1Bolt needs scheduling.");
-                    List<ExecutorDetails> executors = componentToExecutors.get("Level1Bolt");
+                    List<ExecutorDetails> executors = componentToExecutors.get("messageBolt1");
 		    System.out.println("Number of Level1Bolt : " + executors.size());
 
                     // find out the our "spout-supervisor" from the supervisor metadata
@@ -144,11 +144,11 @@ public class SimpleScheduler implements IScheduler {
 		///////////////////////////
 		///schedule Level2Bolt
 		///////////////////////////
-                if (!componentToExecutors.containsKey("Level2Bolt")) {
+                if (!componentToExecutors.containsKey("messageBolt2")) {
                 	System.out.println("Our Level2Bolt DOES NOT NEED scheduling.");
                 } else {
                     System.out.println("Our Level2Bolt needs scheduling.");
-                    List<ExecutorDetails> executors = componentToExecutors.get("Level2Bolt");
+                    List<ExecutorDetails> executors = componentToExecutors.get("messageBolt2");
 		    System.out.println("Number of Level2Bolt : " + executors.size());
 
                     // find out the our "spout-supervisor" from the supervisor metadata

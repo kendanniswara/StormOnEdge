@@ -16,12 +16,14 @@ import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
 public class SimpleScheduler implements IScheduler {
+	
+	String topologyName = "test_0";
     public void prepare(Map conf) {}
 
     public void schedule(Topologies topologies, Cluster cluster) {
 	System.out.println("DemoScheduler: begin scheduling");
         // Gets the topology which we want to schedule
-    TopologyDetails topology = topologies.getByName("test_0");
+    TopologyDetails topology = topologies.getByName(topologyName);
     
     System.out.println("DemoScheduler: begin scheduling");
 
@@ -36,7 +38,7 @@ public class SimpleScheduler implements IScheduler {
                 
                 System.out.println("needs scheduling(component->executor): " + componentToExecutors);
                 System.out.println("needs scheduling(executor->compoenents): " + cluster.getNeedsSchedulingExecutorToComponents(topology));
-                SchedulerAssignment currentAssignment = cluster.getAssignmentById(topologies.getByName("storm-perf-test").getId());
+                SchedulerAssignment currentAssignment = cluster.getAssignmentById(topologies.getByName(topologyName).getId());
                 if (currentAssignment != null) {
                 	System.out.println("current assignments: " + currentAssignment.getExecutorToSlot());
                 } else {

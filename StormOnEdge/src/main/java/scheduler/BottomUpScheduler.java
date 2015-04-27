@@ -1,8 +1,5 @@
 package scheduler;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -21,37 +18,22 @@ import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
-public class SimpleScheduler implements IScheduler {
+public class BottomUpScheduler implements IScheduler {
 	
 	String topologyName = "test_0";
     public void prepare(Map conf) {}
 
     public void schedule(Topologies topologies, Cluster cluster) {
-        // Gets the topology which we want to schedule
+    // Gets the topology which we want to schedule
     //TopologyDetails topology = topologies.getByName(topologyName);
     
     System.out.println("DemoScheduler: begin scheduling");
 
     //HARDCODE
     HashMap<String,String> taskSupervisorPair = new HashMap<String, String>();
-    try {
-    FileReader pairDataFile = new FileReader("/home/kend/fromSICSCloud/pairDataFile.txt");
-    BufferedReader textReader = new BufferedReader(pairDataFile);
-    
-    String line = textReader.readLine();
-    while(line != null || line == "")
-    {
-    	String[] pairString = line.split(";");
-    	taskSupervisorPair.put(pairString[0],pairString[1]);
-    	
-    	line = textReader.readLine();
-    }
-    //taskSupervisorPair.put("messageSpout", "spout-supervisor");
-    //taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
-    //taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
-    
-    textReader.close();
-    }catch(IOException e){}
+    taskSupervisorPair.put("messageSpout", "spout-supervisor");
+    taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
+    taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
     
 	for (TopologyDetails topology : topologies.getTopologies()) {
 		boolean needsScheduling = cluster.needsScheduling(topology);

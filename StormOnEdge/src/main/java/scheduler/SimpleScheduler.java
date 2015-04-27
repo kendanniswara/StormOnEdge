@@ -25,7 +25,6 @@ public class SimpleScheduler implements IScheduler {
     public void prepare(Map conf) {}
 
     public void schedule(Topologies topologies, Cluster cluster) {
-	System.out.println("DemoScheduler: begin scheduling");
         // Gets the topology which we want to schedule
     //TopologyDetails topology = topologies.getByName(topologyName);
     
@@ -34,7 +33,7 @@ public class SimpleScheduler implements IScheduler {
     HashMap<String,String> taskSupervisorPair = new HashMap<String, String>();
     taskSupervisorPair.put("messageSpout", "spout-supervisor");
     taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
-    taskSupervisorPair.put("messageBolt2", "Level1Bolt-supervisor");
+    taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
     
 	for (TopologyDetails topology : topologies.getTopologies()) {
 		boolean needsScheduling = cluster.needsScheduling(topology);

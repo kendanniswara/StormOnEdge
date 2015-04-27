@@ -34,7 +34,7 @@ public class SimpleScheduler implements IScheduler {
     HashMap<String,String> taskSupervisorPair = new HashMap<String, String>();
     taskSupervisorPair.put("messageSpout", "spout-supervisor");
     taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
-    taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
+    taskSupervisorPair.put("messageBolt2", "Level1Bolt-supervisor");
     
 	for (TopologyDetails topology : topologies.getTopologies()) {
 		boolean needsScheduling = cluster.needsScheduling(topology);
@@ -76,10 +76,10 @@ public class SimpleScheduler implements IScheduler {
             	System.out.println(key + ": " + workerClusterMap.getValues(clusterKey));
             }
             
+            MultiMap workerExecutors = new MultiMap();
+            
             for(String executorKey : taskSupervisorPair.keySet())
             {
-            	MultiMap workerExecutors = new MultiMap();
-            	
             	//for example: messageSpout
             	System.out.println("Our " + executorKey  + " needs scheduling.");            	
             	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
@@ -99,37 +99,13 @@ public class SimpleScheduler implements IScheduler {
             		if(!workerIterator.hasNext())
             			workerIterator = workers.iterator();
             	}
-                        	
-            	for(Object ws : workerExecutors.keySet())
-            	{
-            		cluster.assign((WorkerSlot)ws, topology.getId(), (List<ExecutorDetails>) workerExecutors.getValues(ws));
-            		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + ((WorkerSlot)ws).getNodeId() + ", " + ((WorkerSlot)ws).getPort() + "]");
-            	}
-            	
-            	/*
-            	ArrayList<List<ExecutorDetails>> executorMapping = new ArrayList<List<ExecutorDetails>>();
-            	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.get(taskSupervisorPair.get(executorKey));
-            	int workerNum = workers.size();
-            	int i = 0;
-            	
-            	//round robin location inside this supervisor cluster
-            	for(ExecutorDetails executor : componentToExecutors.get(executorKey))
-            	{
-            		
-            		executorMapping.get(i).add(executor);
-            		i++;
-            		i = i % workerNum;
-            	}
-            	
-            	
-            	int idx = 0;
-            	for(WorkerSlot ws : workers)
-            	{
-            		cluster.assign(ws, topology.getId(), executorMapping.get(idx));
-            		idx++;
-            		System.out.println("We assigned executors:" + executorMapping.get(idx) + " to slot: [" + ws.getNodeId() + ", " + ws.getPort() + "]");
-            	}*/
             }
+            
+            for(Object ws : workerExecutors.keySet())
+        	{
+        		cluster.assign((WorkerSlot)ws, topology.getId(), (List<ExecutorDetails>) workerExecutors.getValues(ws));
+        		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + ((WorkerSlot)ws).getNodeId() + ", " + ((WorkerSlot)ws).getPort() + "]");
+        	}
             /*
 			///////////////////////////
 			///schedule InputSpout

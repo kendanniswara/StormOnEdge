@@ -1,4 +1,4 @@
-package reader;
+package SOEreader;
 
 import java.util.HashMap;
 import java.util.Iterator;

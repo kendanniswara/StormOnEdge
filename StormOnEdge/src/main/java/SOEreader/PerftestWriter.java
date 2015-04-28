@@ -11,21 +11,19 @@ import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.generated.SupervisorSummary;
 import backtype.storm.generated.TopologyInfo;
-import backtype.storm.scheduler.Cluster;
 
 public class PerftestWriter {
 	
-	HashMap<String, Long> previousMap = new HashMap<String, Long>();
-	
-	public void print(ClusterSummary summary, TopologyInfo info)
+	public void print(ClusterSummary summary, TopologyInfo info, HashMap<String, Long> previousMap)
 	{
-		boolean first = true;
 		HashMap<String, Long> hostTupleMap = new HashMap<String, Long>();
 		
 		for(SupervisorSummary sup : summary.get_supervisors())
 		{
 			hostTupleMap.put(sup.get_host(), (long) 0);
+			System.out.print(sup.get_host()+",");
 		}
+		System.out.println();
 		
 		for (ExecutorSummary es: info.get_executors()) {
 			ExecutorStats stats = es.get_stats();
@@ -49,18 +47,18 @@ public class PerftestWriter {
 		while(mapIterator.hasNext())
 		{
 			String key = mapIterator.next();
-			if(first) {
-				System.out.print(key+",");
-				first = false;
-			}
-		}
-		System.out.println("");
-		
-		mapIterator = hostTupleMap.keySet().iterator();
-		while(mapIterator.hasNext())
-		{
-			Long tuples = hostTupleMap.get(mapIterator.next());
-			System.out.print(tuples + ",");
+			
+			Long tuples = hostTupleMap.get(key);
+			Long oldtuples;
+			
+			if(previousMap.containsKey(key))
+				oldtuples = previousMap.get(mapIterator.next());
+			else
+				oldtuples = (long) 0;
+			
+			System.out.print(tuples-oldtuples + ",");
+			
+			previousMap.put(key, tuples);
 		}
 		System.out.println("");
 	}

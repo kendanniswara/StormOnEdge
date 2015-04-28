@@ -5,16 +5,28 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 
+import backtype.storm.generated.ClusterSummary;
 import backtype.storm.generated.ExecutorStats;
 import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.generated.SupervisorSummary;
 import backtype.storm.generated.TopologyInfo;
+import backtype.storm.scheduler.Cluster;
 
 public class PerftestWriter {
 	
-	public void print(TopologyInfo info)
+	HashMap<String, Long> previousMap = new HashMap<String, Long>();
+	
+	public void print(ClusterSummary summary, TopologyInfo info)
 	{
+		boolean first = true;
 		HashMap<String, Long> hostTupleMap = new HashMap<String, Long>();
+		
+		for(SupervisorSummary sup : summary.get_supervisors())
+		{
+			hostTupleMap.put(sup.get_host(), (long) 0);
+		}
+		
 		for (ExecutorSummary es: info.get_executors()) {
 			ExecutorStats stats = es.get_stats();
 			if (stats != null) {
@@ -37,8 +49,10 @@ public class PerftestWriter {
 		while(mapIterator.hasNext())
 		{
 			String key = mapIterator.next();
-			
-			System.out.print(key+",");
+			if(first) {
+				System.out.print(key+",");
+				first = false;
+			}
 		}
 		System.out.println("");
 		
@@ -46,7 +60,6 @@ public class PerftestWriter {
 		while(mapIterator.hasNext())
 		{
 			Long tuples = hostTupleMap.get(mapIterator.next());
-			
 			System.out.print(tuples + ",");
 		}
 		System.out.println("");

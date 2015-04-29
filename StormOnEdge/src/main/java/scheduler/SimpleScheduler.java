@@ -41,17 +41,19 @@ public class SimpleScheduler implements IScheduler {
     String line = textReader.readLine();
     while(line != null || line == "")
     {
+    	System.out.println("Read from file: " + line);
     	String[] pairString = line.split(";");
     	taskSupervisorPair.put(pairString[0],pairString[1]);
     	
     	line = textReader.readLine();
     }
-    //taskSupervisorPair.put("messageSpout", "spout-supervisor");
+    //taskSupervisorPair.put("messageSpout", "edge-supervisor");
     //taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
     //taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
+    //taskSupervisorPair.put("messageBolt3", "Level2Bolt-supervisor");
     
     textReader.close();
-    }catch(IOException e){}
+    }catch(IOException e){e.printStackTrace();}
     
 	for (TopologyDetails topology : topologies.getTopologies()) {
 		boolean needsScheduling = cluster.needsScheduling(topology);

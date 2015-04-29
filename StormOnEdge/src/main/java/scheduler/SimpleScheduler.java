@@ -39,7 +39,7 @@ public class SimpleScheduler implements IScheduler {
     BufferedReader textReader = new BufferedReader(pairDataFile);
     
     String line = textReader.readLine();
-    while(line != null || line == "")
+    while(line != null && line != "")
     {
     	System.out.println("Read from file: " + line);
     	String[] pairString = line.split(";");
@@ -104,19 +104,33 @@ public class SimpleScheduler implements IScheduler {
             	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
             	List<ExecutorDetails> executors = componentToExecutors.get(executorKey);
             	
-            	Iterator<WorkerSlot> workerIterator = workers.iterator();
-            	Iterator<ExecutorDetails> executorIterator = executors.iterator();
-            	
-            	//round-robin for all executors A to all supervisors B
-            	while(executorIterator.hasNext() && workerIterator.hasNext())
+            	if(executors == null)
             	{
-            		WorkerSlot w = workerIterator.next();
-            		
-            		workerExecutors.add(w, executorIterator.next());
-            		
-            		//reset to 0 again
-            		if(!workerIterator.hasNext())
-            			workerIterator = workers.iterator();
+            		System.out.println("No executors");
+            	}
+            	else if(workers == null)
+            	{
+            		System.out.println("No workers");
+            	}
+            	else
+            	{
+	            	System.out.println("Number of executors on" + executorKey  + ": " + executors.size() );
+	            	System.out.println("Number of workers on" + executorKey  + ": " + workers.size() );
+	            	
+	            	Iterator<WorkerSlot> workerIterator = workers.iterator();
+	            	Iterator<ExecutorDetails> executorIterator = executors.iterator();
+	            	
+	            	//round-robin for all executors A to all supervisors B
+	            	while(executorIterator.hasNext() && workerIterator.hasNext())
+	            	{
+	            		WorkerSlot w = workerIterator.next();
+	            		
+	            		workerExecutors.add(w, executorIterator.next());
+	            		
+	            		//reset to 0 again
+	            		if(!workerIterator.hasNext())
+	            			workerIterator = workers.iterator();
+	            	}
             	}
             }
             

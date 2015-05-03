@@ -3,6 +3,7 @@ package scheduler;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -107,7 +108,7 @@ public class SimpleScheduler implements IScheduler {
             	if(taskSupervisorPair.get(executorKey).equals("ALLWORKERS"))
             	{
             		System.out.println("ALLWORKERS found, get all workers");
-            		workers = (List<WorkerSlot>) workerClusterMap.values();
+            		workers = new ArrayList<WorkerSlot>(workerClusterMap.values());
             	}
             	else
             	{

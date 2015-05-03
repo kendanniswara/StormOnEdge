@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Set;
 
 import backtype.storm.generated.ClusterSummary;
+import backtype.storm.generated.ExecutorSpecificStats;
 import backtype.storm.generated.ExecutorStats;
 import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.GlobalStreamId;
@@ -28,9 +29,13 @@ public class PerftestWriter {
 		for (ExecutorSummary es: info.get_executors()) {
 			ExecutorStats stats = es.get_stats();
 			if (stats != null) {
-				Long tuples = getStatValueFromMap(stats.get_transferred(), ":all-time");
-				if ( tuples == null)
-					tuples = (long) 0;
+				ExecutorSpecificStats specStats = stats.get_specific();
+				Long tuples;
+				
+				if(specStats.is_set_spout())
+					tuples = getStatValueFromMap(stats.get_transferred(), ":all-time");
+				else
+					tuples = getStatValueFromMap(stats.get_transferred(), ":all-time");
 				
 				Long newl = (long) 0;
 				if(hostTupleMap.containsKey(es.get_host()))
@@ -67,7 +72,11 @@ public class PerftestWriter {
 		  Long statValue = null;
 		  Map<String, Long> intermediateMap = map.get(statName);
 		  statValue = intermediateMap.get("default");
-		  return statValue;
+		  
+		  if(statValue == null)
+			  return (long) 0;
+		  else
+			  return statValue;
 		 }
 	
 	public Long getBoltStatLongValueFromMap(Map<String, Map<GlobalStreamId, Long>> map, String statName) {
@@ -78,6 +87,9 @@ public class PerftestWriter {
 		   Iterator<GlobalStreamId> itr = key.iterator();
 		   statValue = intermediateMap.get(itr.next());
 		  }
-		  return statValue;
+		  if(statValue == null)
+			  return (long) 0;
+		  else
+			  return statValue;
 		 }
 }

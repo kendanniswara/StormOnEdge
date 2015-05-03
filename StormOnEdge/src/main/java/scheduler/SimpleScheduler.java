@@ -11,6 +11,7 @@ import java.util.Map;
 
 import org.mortbay.util.MultiMap;
 
+import backtype.storm.daemon.worker;
 import backtype.storm.scheduler.Cluster;
 import backtype.storm.scheduler.EvenScheduler;
 import backtype.storm.scheduler.ExecutorDetails;
@@ -100,9 +101,13 @@ public class SimpleScheduler implements IScheduler {
             for(String executorKey : taskSupervisorPair.keySet())
             {
             	//for example: messageSpout
-            	System.out.println("Our " + executorKey  + " needs scheduling.");            	
-            	List<WorkerSlot> workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
+            	System.out.println("Our " + executorKey  + " needs scheduling.");
             	List<ExecutorDetails> executors = componentToExecutors.get(executorKey);
+            	List<WorkerSlot> workers;
+            	if(taskSupervisorPair.get(executorKey) == "ALLWORKERS")
+            		workers = (List<WorkerSlot>) workerClusterMap.values();
+            	else
+            		workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
             	
             	if(executors == null)
             	{

@@ -105,9 +105,15 @@ public class SimpleScheduler implements IScheduler {
             	List<ExecutorDetails> executors = componentToExecutors.get(executorKey);
             	List<WorkerSlot> workers;
             	if(taskSupervisorPair.get(executorKey) == "ALLWORKERS")
+            	{
+            		System.out.println("ALLWORKERS found, get all workers");
             		workers = (List<WorkerSlot>) workerClusterMap.values();
+            	}
             	else
+            	{
+            		System.out.println("Get all workers with value : " + taskSupervisorPair.get(executorKey));
             		workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
+            	}
             	
             	if(executors == null)
             	{

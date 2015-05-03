@@ -108,14 +108,7 @@ public class SimpleScheduler implements IScheduler {
             	if(taskSupervisorPair.get(executorKey).equals("ALLWORKERS"))
             	{
             		System.out.println("ALLWORKERS found, get all workers");
-            		workers = new ArrayList<WorkerSlot>();
-            		
-            		ArrayList<Object> ao = (ArrayList<Object>) workerClusterMap.values();
-            		for(Object o : ao)
-            		{
-            			ArrayList<WorkerSlot> awo = (ArrayList<WorkerSlot>) o; 
-            			workers.addAll(awo);
-            		}
+            		workers = cluster.getAssignableSlots();
             	}
             	else
             	{

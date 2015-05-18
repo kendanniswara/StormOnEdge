@@ -28,6 +28,7 @@ import extractor.PerftestWriter;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.generated.Nimbus;
@@ -39,13 +40,9 @@ import backtype.storm.generated.TopologyInfo;
 import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.ExecutorStats;
 
-import java.util.Iterator;
 import java.util.HashMap;
-import java.util.Set;
 
-import backtype.storm.generated.GlobalStreamId;
-
-public class Main {
+public class StaticMultiZone {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
   @Option(name="--help", aliases={"-h"}, usage="print help message")
@@ -247,7 +244,7 @@ public class Main {
       _ackers = 0;
     }
 
-    try {
+    try {/*
       for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
         TopologyBuilder builder = new TopologyBuilder();
         LOG.info("Adding in "+_spoutParallel+" spouts");
@@ -260,7 +257,31 @@ public class Main {
           LOG.info("Adding in "+_boltParallel+" bolts at level "+levelNum);
           builder.setBolt("messageBolt"+levelNum, new SOLBolt(), _boltParallel)
               .shuffleGrouping("messageBolt"+(levelNum - 1));
-        }
+        }*/
+    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
+        
+        TopologyBuilder builder = new TopologyBuilder();
+        LOG.info("Adding in "+_spoutParallel+" spouts");
+        builder.setSpout("messageSpout", 
+            new SOLSpout(_messageSize, _ackEnabled), 6);
+        
+        LOG.info("Adding in "+_boltParallel+" bolts");
+        builder.setBolt("messageBoltSG1", new SOLBolt(), 6)
+            .shuffleGrouping("messageSpout");
+        builder.setBolt("messageBoltFG1", new SOLBolt(), 6)
+            .fieldsGrouping("messageBoltSG1", new Fields("FieldValue"));
+        
+        builder.setBolt("messageBoltLocalResult", new SOLBolt(), 2)
+        	.shuffleGrouping("messageBoltFG1");
+        
+        builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            .shuffleGrouping("messageBoltFG1");
+        builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            .fieldsGrouping("messageBoltSG2", new Fields("FieldValue"));
+        
+        builder.setBolt("messageBoltGlobalResult", new SOLBolt(), 2)
+        .shuffleGrouping("messageBoltFG2");
+        
 
         Config conf = new Config();
         conf.setDebug(_debug);
@@ -291,6 +312,6 @@ public class Main {
   }
   
   public static void main(String[] args) throws Exception {
-    new Main().realMain(args);
+    new StaticMultiZone().realMain(args);
   }
 }

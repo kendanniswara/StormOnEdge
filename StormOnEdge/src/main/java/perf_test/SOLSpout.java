@@ -26,7 +26,13 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
 public class SOLSpout extends BaseRichSpout {
-  private int _sizeInBytes;
+	
+/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4137062886055644678L;
+	
+private int _sizeInBytes;
   private long _messageCount;
   private SpoutOutputCollector _collector;
   private String [] _messages = null;
@@ -59,6 +65,8 @@ public class SOLSpout extends BaseRichSpout {
       }
       _messages[i] = sb.toString();
     }
+    
+    context.addTaskHook(new SOEBasicHook());
   }
 
   @Override
@@ -66,23 +74,22 @@ public class SOLSpout extends BaseRichSpout {
     //Empty
   }
 
-  @Override
   public void nextTuple() {
     final String message = _messages[_rand.nextInt(_messages.length)];
-    if (_messageCount < 7000)
-    {
+    String fieldValue = String.valueOf(_rand.nextInt(10));
+    
+    //if (_messageCount < 7000)
+    //{
 	    if(_ackEnabled) {
-	      _collector.emit(new Values(message), _messageCount);
+	      _collector.emit(new Values(message, fieldValue), _messageCount);
 	    } else {
-	      _collector.emit(new Values(message));
+	      _collector.emit(new Values(message, fieldValue));
 	    }
 	    _messageCount++;
-    }
+    //}
     try {
-    	Thread.sleep(50);
-    } catch(Exception e)
-	{
-	}
+    	//Thread.sleep(1);
+    } catch(Exception e) { }
   }
 
 
@@ -96,8 +103,10 @@ public class SOLSpout extends BaseRichSpout {
     //Empty
   }
 
-  @Override
-  public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    declarer.declare(new Fields("message"));
-  }
+public void declareOutputFields(OutputFieldsDeclarer declarer) {
+	// TODO Auto-generated method stub
+	declarer.declare(new Fields("message", "fieldValue"));
+}
+  
+  
 }

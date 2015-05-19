@@ -54,7 +54,7 @@ public class PerftestWriter {
 			previousMap.put(key, tuples);
 		}
 		
-		//System.out.println("BAJINGAN");
+		System.out.println("BABI TAI");
 		//System.out.println(keyString.toString());
 		//System.out.print(tupleString.toString());
 	//System.out.println("");

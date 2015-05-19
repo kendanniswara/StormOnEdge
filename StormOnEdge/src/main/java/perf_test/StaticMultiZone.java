@@ -162,10 +162,17 @@ public class StaticMultiZone {
     int numSupervisors = summary.get_supervisors_size();
     int totalSlots = 0;
     int totalUsedSlots = 0;
+    
+    //////////
+    String namaSupervisor = "";
     for (SupervisorSummary sup: summary.get_supervisors()) {
       totalSlots += sup.get_num_workers();
       totalUsedSlots += sup.get_num_used_workers();
+      namaSupervisor = namaSupervisor + sup.get_supervisor_id() + ",";
     }
+    System.out.println(namaSupervisor);
+    //////////
+    
     int slotsUsedDiff = totalUsedSlots - state.slotsUsed;
     state.slotsUsed = totalUsedSlots;
 
@@ -204,7 +211,7 @@ public class StaticMultiZone {
     state.transferred = totalTransferred;
     //double throughput = (transferredDiff == 0 || time == 0) ? 0.0 : (transferredDiff * size)/(1024.0 * 1024.0)/(time/1000.0);
     //System.out.println(message+"\t"+numTopologies+"\t"+totalSlots+"\t"+totalUsedSlots+"\t"+totalExecutors+"\t"+executorsWithMetrics+"\t"+now+"\t"+time+"\t"+transferredDiff+"\t"+throughput);
-	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time);
+	//~~~~~~System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time);
     if ("WAITING".equals(message)) {
       //System.err.println(" !("+totalUsedSlots+" > 0 && "+slotsUsedDiff+" == 0 && "+totalExecutors+" > 0 && "+executorsWithMetrics+" >= "+totalExecutors+")");
     }
@@ -216,7 +223,7 @@ public class StaticMultiZone {
     Map clusterConf = Utils.readStormConfig();
     clusterConf.putAll(Utils.readCommandLineOpts());
     Nimbus.Client client = NimbusClient.getConfiguredClient(clusterConf).getClient();
-
+    
     CmdLineParser parser = new CmdLineParser(this);
     parser.setUsageWidth(80);
     try {
@@ -269,7 +276,7 @@ public class StaticMultiZone {
         builder.setBolt("messageBoltSG1", new SOLBolt(), 6)
             .shuffleGrouping("messageSpout");
         builder.setBolt("messageBoltFG1", new SOLBolt(), 6)
-            .fieldsGrouping("messageBoltSG1", new Fields("FieldValue"));
+            .fieldsGrouping("messageBoltSG1", new Fields("fieldValue"));
         
         builder.setBolt("messageBoltLocalResult", new SOLBolt(), 2)
         	.shuffleGrouping("messageBoltFG1");
@@ -277,7 +284,7 @@ public class StaticMultiZone {
         builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
             .shuffleGrouping("messageBoltFG1");
         builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
-            .fieldsGrouping("messageBoltSG2", new Fields("FieldValue"));
+            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
         
         builder.setBolt("messageBoltGlobalResult", new SOLBolt(), 2)
         .shuffleGrouping("messageBoltFG2");

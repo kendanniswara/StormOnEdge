@@ -32,12 +32,15 @@ public class SOLSpout extends BaseRichSpout {
 	 */
 	private static final long serialVersionUID = 4137062886055644678L;
 	
-private int _sizeInBytes;
+  private int _sizeInBytes;
   private long _messageCount;
   private SpoutOutputCollector _collector;
   private String [] _messages = null;
   private boolean _ackEnabled;
   private Random _rand = null;
+  private String nodeName;
+  
+  
   public SOLSpout(int sizeInBytes, boolean ackEnabled) {
     if(sizeInBytes < 0) {
       sizeInBytes = 0;
@@ -65,6 +68,8 @@ private int _sizeInBytes;
       }
       _messages[i] = sb.toString();
     }
+    nodeName = context.getThisComponentId();
+    
     
     context.addTaskHook(new SOEBasicHook());
   }
@@ -76,14 +81,14 @@ private int _sizeInBytes;
 
   public void nextTuple() {
     final String message = _messages[_rand.nextInt(_messages.length)];
-    String fieldValue = String.valueOf(_rand.nextInt(10));
+    //String fieldValue = String.valueOf(_rand.nextInt(10));
     
     //if (_messageCount < 7000)
     //{
 	    if(_ackEnabled) {
-	      _collector.emit(new Values(message, fieldValue), _messageCount);
+	      _collector.emit(new Values(message, nodeName), _messageCount);
 	    } else {
-	      _collector.emit(new Values(message, fieldValue));
+	      _collector.emit(new Values(message, nodeName));
 	    }
 	    _messageCount++;
     //}

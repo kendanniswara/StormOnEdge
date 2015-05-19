@@ -16,12 +16,12 @@ public class PerftestWriter {
 	
 	public static void print(ClusterSummary summary, TopologyInfo info, HashMap<String, Long> previousMap)
 	{
+		StringBuilder keyString = new StringBuilder();
+		StringBuilder tupleString = new StringBuilder();
 		HashMap<String, Long> hostTupleMap = new HashMap<String, Long>();
 		for(SupervisorSummary sup : summary.get_supervisors()) {
 			hostTupleMap.put(sup.get_host(), (long) 0);
-			System.out.print(sup.get_host()+",");
 		}
-		System.out.println();
 
 		for (ExecutorSummary es: info.get_executors()) {
 			ExecutorStats stats = es.get_stats();
@@ -48,9 +48,15 @@ public class PerftestWriter {
 			else
 				oldtuples = (long) 0;
 			
-			System.out.print(tuples-oldtuples + ",");
+			keyString.append(key + ",");
+			tupleString.append((tuples-oldtuples) + ",");
+			//System.out.print(key + ":" + (tuples-oldtuples) + ",");
 			previousMap.put(key, tuples);
 		}
+		
+		//System.out.println("BAJINGAN");
+		//System.out.println(keyString.toString());
+		//System.out.print(tupleString.toString());
 	//System.out.println("");
 	}
 	

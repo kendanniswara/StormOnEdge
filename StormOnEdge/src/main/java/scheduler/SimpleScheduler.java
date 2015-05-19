@@ -41,7 +41,7 @@ public class SimpleScheduler implements IScheduler {
     BufferedReader textReader = new BufferedReader(pairDataFile);
     
     String line = textReader.readLine();
-    while(line != null && line != "")
+    while(line != null && !line.equals(""))
     {
     	System.out.println("Read from file: " + line);
     	String[] pairString = line.split(";");

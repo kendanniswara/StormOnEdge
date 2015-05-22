@@ -1,4 +1,4 @@
-package perf_test;
+package performance_test;
 
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
@@ -28,7 +28,6 @@ import extractor.PerftestWriter;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.generated.Nimbus;
@@ -42,7 +41,10 @@ import backtype.storm.generated.ExecutorStats;
 
 import java.util.HashMap;
 
-public class StaticMultiZone {
+import performance_test.SOLBolt;
+import performance_test.SOLSpout;
+
+public class Main {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
   @Option(name="--help", aliases={"-h"}, usage="print help message")
@@ -162,17 +164,10 @@ public class StaticMultiZone {
     int numSupervisors = summary.get_supervisors_size();
     int totalSlots = 0;
     int totalUsedSlots = 0;
-    
-    //////////
-    String namaSupervisor = "";
     for (SupervisorSummary sup: summary.get_supervisors()) {
       totalSlots += sup.get_num_workers();
       totalUsedSlots += sup.get_num_used_workers();
-      namaSupervisor = namaSupervisor + sup.get_supervisor_id() + ",";
     }
-    System.out.println(namaSupervisor);
-    //////////
-    
     int slotsUsedDiff = totalUsedSlots - state.slotsUsed;
     state.slotsUsed = totalUsedSlots;
 
@@ -223,7 +218,7 @@ public class StaticMultiZone {
     Map clusterConf = Utils.readStormConfig();
     clusterConf.putAll(Utils.readCommandLineOpts());
     Nimbus.Client client = NimbusClient.getConfiguredClient(clusterConf).getClient();
-    
+
     CmdLineParser parser = new CmdLineParser(this);
     parser.setUsageWidth(80);
     try {
@@ -251,7 +246,7 @@ public class StaticMultiZone {
       _ackers = 0;
     }
 
-    try {/*
+    try {
       for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
         TopologyBuilder builder = new TopologyBuilder();
         LOG.info("Adding in "+_spoutParallel+" spouts");
@@ -264,31 +259,7 @@ public class StaticMultiZone {
           LOG.info("Adding in "+_boltParallel+" bolts at level "+levelNum);
           builder.setBolt("messageBolt"+levelNum, new SOLBolt(), _boltParallel)
               .shuffleGrouping("messageBolt"+(levelNum - 1));
-        }*/
-    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
-        
-        TopologyBuilder builder = new TopologyBuilder();
-        LOG.info("Adding in "+_spoutParallel+" spouts");
-        builder.setSpout("messageSpout", 
-            new SOLSpout(_messageSize, _ackEnabled), 6);
-        
-        LOG.info("Adding in "+_boltParallel+" bolts");
-        builder.setBolt("messageBoltSG1", new SOLBolt(), 6)
-            .shuffleGrouping("messageSpout");
-        builder.setBolt("messageBoltFG1", new SOLBolt(), 6)
-            .fieldsGrouping("messageBoltSG1", new Fields("fieldValue"));
-        
-        builder.setBolt("messageBoltLocalResult", new SOLBolt(), 2)
-        	.shuffleGrouping("messageBoltFG1");
-        
-        builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
-            .shuffleGrouping("messageBoltFG1");
-        builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
-            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
-        
-        builder.setBolt("messageBoltGlobalResult", new SOLBolt(), 2)
-        .shuffleGrouping("messageBoltFG2");
-        
+        }
 
         Config conf = new Config();
         conf.setDebug(_debug);
@@ -319,6 +290,6 @@ public class StaticMultiZone {
   }
   
   public static void main(String[] args) throws Exception {
-    new StaticMultiZone().realMain(args);
+    new Main().realMain(args);
   }
 }

@@ -1,4 +1,4 @@
-package perf_test;
+package performance_test;
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
  *
@@ -69,7 +69,6 @@ public class SOLSpout extends BaseRichSpout {
       _messages[i] = sb.toString();
     }
     nodeName = context.getThisComponentId();
-    
     
     context.addTaskHook(new SOEBasicHook());
   }

@@ -1,6 +1,8 @@
-package perf_test;
+package performance_test;
 
 import backtype.storm.hooks.BaseTaskHook;
+import backtype.storm.hooks.info.BoltAckInfo;
+import backtype.storm.hooks.info.BoltExecuteInfo;
 import backtype.storm.hooks.info.EmitInfo;
 import backtype.storm.hooks.info.SpoutAckInfo;
 import backtype.storm.task.TopologyContext;
@@ -81,7 +83,7 @@ public class SOEBasicHook extends BaseTaskHook {
         				writer = new FileWriter("/home/kend/CounterOut.csv", true);
         				writer.write(counterResultString.toString());
         				writer.close();
-        			}catch(Exception e){ }
+        			}catch(Exception e){e.printStackTrace();}
         			        			
         			latencyResultString.setLength(0);
         			counterResultString.setLength(0);

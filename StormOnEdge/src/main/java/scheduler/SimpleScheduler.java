@@ -2,6 +2,7 @@ package scheduler;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,10 +10,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.mortbay.util.MultiMap;
 
-import backtype.storm.daemon.worker;
 import backtype.storm.scheduler.Cluster;
 import backtype.storm.scheduler.EvenScheduler;
 import backtype.storm.scheduler.ExecutorDetails;
@@ -26,16 +27,18 @@ import backtype.storm.scheduler.WorkerSlot;
 public class SimpleScheduler implements IScheduler {
 	
 	String topologyName = "test_0";
+	Random rand = new Random();
     public void prepare(Map conf) {}
 
-    public void schedule(Topologies topologies, Cluster cluster) {
+    @SuppressWarnings("unchecked")
+	public void schedule(Topologies topologies, Cluster cluster) {
         // Gets the topology which we want to schedule
     //TopologyDetails topology = topologies.getByName(topologyName);
     
     System.out.println("DemoScheduler: begin scheduling");
 
     //HARDCODE
-    HashMap<String,String> taskSupervisorPair = new HashMap<String, String>();
+    HashMap<String,String> componentSupervisorPair = new HashMap<String, String>();
     try {
     FileReader pairDataFile = new FileReader("/home/kend/fromSICSCloud/pairDataFile.txt");
     BufferedReader textReader = new BufferedReader(pairDataFile);
@@ -43,9 +46,10 @@ public class SimpleScheduler implements IScheduler {
     String line = textReader.readLine();
     while(line != null && !line.equals(""))
     {
+    	//messageSpout;edge-supervisor
     	System.out.println("Read from file: " + line);
     	String[] pairString = line.split(";");
-    	taskSupervisorPair.put(pairString[0],pairString[1]);
+    	componentSupervisorPair.put(pairString[0],pairString[1]);
     	
     	line = textReader.readLine();
     }
@@ -67,7 +71,7 @@ public class SimpleScheduler implements IScheduler {
 			Map<String, List<ExecutorDetails>> componentToExecutors = cluster.getNeedsSchedulingComponentToExecutors(topology);
                 
             System.out.println("needs scheduling(component->executor): " + componentToExecutors);
-            System.out.println("needs scheduling(executor->compoenents): " + cluster.getNeedsSchedulingExecutorToComponents(topology));
+            //System.out.println("needs scheduling(executor->compoenents): " + cluster.getNeedsSchedulingExecutorToComponents(topology));
             SchedulerAssignment currentAssignment = cluster.getAssignmentById(topology.getId());
             
             if (currentAssignment != null) {
@@ -80,47 +84,58 @@ public class SimpleScheduler implements IScheduler {
             ///NEW SCHEDULER
             ////////////////
             System.out.println("Start categorizing the supervisor");
-            MultiMap workerClusterMap = new MultiMap();
+            
+            MultiMap workerSlotClusterBySupervisorMap = new MultiMap();
+            MultiMap taskClusterBySupervisorMap = new MultiMap();
+            MultiMap workerExecutors = new MultiMap();
+            
             Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
             
             //put workerSLots based on supervisor type 
             for (SupervisorDetails supervisor : supervisors) {
                 Map meta = (Map) supervisor.getSchedulerMeta();
                 
-                workerClusterMap.addValues(meta.get("name"), cluster.getAvailableSlots(supervisor));
+                //taskClusterBySupervisorMap.addValues(meta.get("name"), new ArrayList<Integer>());
+                workerSlotClusterBySupervisorMap.addValues(meta.get("name"), cluster.getAvailableSlots(supervisor));
             }
             
-            
-            for(Object clusterKey : workerClusterMap.keySet())
+            //print supervisor name and the worker list
+            for(Object workerClusterKey : workerSlotClusterBySupervisorMap.keySet())
             {
-            	String key = (String)clusterKey;
-            	System.out.println(key + ": " + workerClusterMap.getValues(clusterKey));
+            	String key = (String)workerClusterKey;
+            	System.out.println(key + ": " + workerSlotClusterBySupervisorMap.getValues(workerClusterKey));
             }
             
-            MultiMap workerExecutors = new MultiMap();
             
-            for(String executorKey : taskSupervisorPair.keySet())
+            for(String executorKey : componentSupervisorPair.keySet())
             {
             	//for example: messageSpout
             	System.out.println("Our " + executorKey  + " needs scheduling.");
             	List<ExecutorDetails> executors = componentToExecutors.get(executorKey);
-            	List<WorkerSlot> workers;
-            	if(taskSupervisorPair.get(executorKey).equals("ALLWORKERS"))
+            	List<WorkerSlot> workers = new ArrayList<WorkerSlot>();
+            	
+            	if(componentSupervisorPair.get(executorKey).split(",")[0].equals("ALLWORKERS"))
             	{
             		System.out.println("ALLWORKERS found, get all workers");
             		workers = cluster.getAssignableSlots();
             	}
             	else
             	{
-            		System.out.println("Get all workers with value : " + taskSupervisorPair.get(executorKey));
-            		workers = (List<WorkerSlot>) workerClusterMap.getValues(taskSupervisorPair.get(executorKey));
+            		System.out.println("Get all workers with value : " + componentSupervisorPair.get(executorKey));
+            		String[] workersName = componentSupervisorPair.get(executorKey).split(",");
+            		for(int ii = 0; ii < workersName.length; ii++)
+            		{
+            			List<WorkerSlot>  wk = (List<WorkerSlot>) workerSlotClusterBySupervisorMap.getValues(workersName[ii]);
+            			if(wk != null)
+            				workers.addAll(wk);
+            		}
             	}
             	
             	if(executors == null)
             	{
             		System.out.println("No executors");
             	}
-            	else if(workers == null)
+            	else if(workers.isEmpty())
             	{
             		System.out.println("No workers");
             	}
@@ -131,174 +146,75 @@ public class SimpleScheduler implements IScheduler {
 	            	
 	            	Iterator<WorkerSlot> workerIterator = workers.iterator();
 	            	Iterator<ExecutorDetails> executorIterator = executors.iterator();
-	            	
-	            	//round-robin for all executors A to all supervisors B
-	            	while(executorIterator.hasNext() && workerIterator.hasNext())
+
+	            	//if more executors than workers, do simple round robin
+	            	if(executors.size() >= workers.size())
 	            	{
-	            		WorkerSlot w = workerIterator.next();
-	            		
-	            		workerExecutors.add(w, executorIterator.next());
-	            		
-	            		//reset to 0 again
-	            		if(!workerIterator.hasNext())
-	            			workerIterator = workers.iterator();
+		            	//round-robin for all executors A to all supervisors B
+		            	while(executorIterator.hasNext() && workerIterator.hasNext())
+		            	{
+		            		WorkerSlot w = workerIterator.next();
+		            		ExecutorDetails ed = executorIterator.next();
+		            		workerExecutors.add(w, ed);
+		            		
+		            		String SupName = findSupervisorNameinWorkerSlot(workerSlotClusterBySupervisorMap, w);
+		            		for(int ii = ed.getStartTask(); ii <= ed.getEndTask(); ii++)
+		            			taskClusterBySupervisorMap.add(SupName, new Integer(ii));
+		            		
+		            		//reset to 0 again
+		            		if(!workerIterator.hasNext())
+		            			workerIterator = workers.iterator();
+		            	}
+	            	}
+	            	//if more workers than executors, choose randomly
+	            	else
+	            	{
+		            	//random for all executors A to all supervisors B
+		            	while(executorIterator.hasNext() && !workers.isEmpty())
+		            	{
+		            		WorkerSlot w = workers.get(rand.nextInt(workers.size()));
+		            		ExecutorDetails ed = executorIterator.next();
+		            		workerExecutors.add(w, ed);
+		            		
+		            		String SupName = findSupervisorNameinWorkerSlot(workerSlotClusterBySupervisorMap, w);
+		            		for(int ii = ed.getStartTask(); ii <= ed.getEndTask(); ii++)
+		            			taskClusterBySupervisorMap.add(SupName, new Integer(ii));
+		            	}
 	            	}
             	}
             }
             
             for(Object ws : workerExecutors.keySet())
         	{
-        		cluster.assign((WorkerSlot)ws, topology.getId(), (List<ExecutorDetails>) workerExecutors.getValues(ws));
-        		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + ((WorkerSlot)ws).getNodeId() + ", " + ((WorkerSlot)ws).getPort() + "]");
+            	List<ExecutorDetails> edetails = (List<ExecutorDetails>) workerExecutors.getValues(ws);
+            	WorkerSlot wslot = (WorkerSlot) ws;
+            	
+        		cluster.assign(wslot, topology.getId(), edetails);
+        		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]");
         	}
-            /*
-			///////////////////////////
-			///schedule InputSpout
-			///////////////////////////
-            if (!componentToExecutors.containsKey("messageSpout")) {
-            	System.out.println("Our InputSpout DOES NOT NEED scheduling.");
             
-            } 
-            
-            else {
-                System.out.println("Our InputSpout needs scheduling.");
-                List<ExecutorDetails> executors = componentToExecutors.get("messageSpout");
-                System.out.println("Number of InputSpout : " + executors.size());
-
-                // find out the our "spout-supervisor" from the supervisor metadata
-                Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
-                for (SupervisorDetails supervisor : supervisors) {
-                    Map meta = (Map) supervisor.getSchedulerMeta();
-
-                    if (meta.get("name").equals("spout-supervisor")) {
-                    	specialSupervisors.add(supervisor);
-                    }
-                }
-
-                // found the special supervisor
-                if (!specialSupervisors.isEmpty()) {
-                	System.out.println("Found the spout-supervisor: " + specialSupervisors.size());
-                    	
-					for(SupervisorDetails supervisor : specialSupervisors)
-					{
-						List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);
-						// if there is no available slots on this supervisor, free some.
-		                // TODO for simplicity, we free all the used slots on the supervisor.
-		                if (availableSlots.isEmpty() && !executors.isEmpty()) {
-		                    for (Integer port : cluster.getUsedPorts(supervisor)) {
-		                        cluster.freeSlot(new WorkerSlot(supervisor.getId(), port));
-		                        }
-		                    }
-		
-						// re-get the aviableSlots
-		        		availableSlots = cluster.getAvailableSlots(supervisor);
-		
-						// since it is just a demo, to keep things simple, we assign all the
-			            // executors into one slot.
-		        	    cluster.assign(availableSlots.get(0), topology.getId(), executors);
-		        	    System.out.println("We assigned executors:" + executors + " to slot: [" + availableSlots.get(0).getNodeId() + ", " + availableSlots.get(0).getPort() + "]");
-					}
-                       
-                } else {
-                	System.out.println("There is no supervisor named spout-supervisor!!!");
-                }
+            StringBuilder taskStringBuilder = new StringBuilder();            
+            for(Object sup : taskClusterBySupervisorMap.keySet())
+            {
+            	String taskString = (String) sup + ";";
+            	
+            	for(Integer t : (List<Integer>) taskClusterBySupervisorMap.getValues(sup))
+            	{
+            		taskString = taskString + t.toString() + ",";
+            	}
+            	
+            	taskStringBuilder.append(taskString.substring(0, taskString.length()-1));
+            	taskStringBuilder.append("\n");
             }
+            
+            try {
+				FileWriter writer = new FileWriter("/home/kend/fromSICSCloud/PairSupervisorTasks.txt", false);
+				writer.write(taskStringBuilder.toString());
+				writer.close();
+			}catch(Exception e){ }
+            
+            System.out.println(taskStringBuilder.toString());
 
-		///////////////////////////
-		///schedule Level1Bolt
-		///////////////////////////
-                if (!componentToExecutors.containsKey("messageBolt1")) {
-                	System.out.println("Our Level1Bolt DOES NOT NEED scheduling.");
-                } else {
-                    System.out.println("Our Level1Bolt needs scheduling.");
-                    List<ExecutorDetails> executors = componentToExecutors.get("messageBolt1");
-		    System.out.println("Number of Level1Bolt : " + executors.size());
-
-                    // find out the our "spout-supervisor" from the supervisor metadata
-                    Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
-                    for (SupervisorDetails supervisor : supervisors) {
-                        Map meta = (Map) supervisor.getSchedulerMeta();
-
-                        if (meta.get("name").equals("Level1Bolt-supervisor")) {
-                        	specialSupervisors.add(supervisor);
-                        }
-                    }
-
-                    // found the special supervisor
-                    if (!specialSupervisors.isEmpty()) {
-                    	System.out.println("Found the Level1Bolt-supervisor: " + specialSupervisors.size());
-			for(SupervisorDetails supervisor : specialSupervisors)
-			{
-				List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);
-				// if there is no available slots on this supervisor, free some.
-		                // TODO for simplicity, we free all the used slots on the supervisor.
-		                if (availableSlots.isEmpty() && !executors.isEmpty()) {
-		                    for (Integer port : cluster.getUsedPorts(supervisor)) {
-		                        cluster.freeSlot(new WorkerSlot(supervisor.getId(), port));
-	                            }
-	                        }
-
-				// re-get the aviableSlots
-        			availableSlots = cluster.getAvailableSlots(supervisor);
-
-				// since it is just a demo, to keep things simple, we assign all the
-	               		// executors into one slot.
-        	        	cluster.assign(availableSlots.get(0), topology.getId(), executors);
-        	                System.out.println("We assigned executors:" + executors + " to slot: [" + availableSlots.get(0).getNodeId() + ", " + availableSlots.get(0).getPort() + "]");
-			}
-                       
-                    } else {
-                    	System.out.println("There is no supervisor named Level1Bolt-supervisor!!!");
-                    }
-                }
-
-		///////////////////////////
-		///schedule Level2Bolt
-		///////////////////////////
-                if (!componentToExecutors.containsKey("messageBolt2")) {
-                	System.out.println("Our Level2Bolt DOES NOT NEED scheduling.");
-                } else {
-                    System.out.println("Our Level2Bolt needs scheduling.");
-                    List<ExecutorDetails> executors = componentToExecutors.get("messageBolt2");
-		    System.out.println("Number of Level2Bolt : " + executors.size());
-
-                    // find out the our "spout-supervisor" from the supervisor metadata
-                    Collection<SupervisorDetails> specialSupervisors = new ArrayList<SupervisorDetails>();
-                    for (SupervisorDetails supervisor : supervisors) {
-                        Map meta = (Map) supervisor.getSchedulerMeta();
-
-                        if (meta.get("name").equals("Level2Bolt-supervisor")) {
-                        	specialSupervisors.add(supervisor);
-                        }
-                    }
-
-                    // found the special supervisor
-                    if (!specialSupervisors.isEmpty()) {
-                    	System.out.println("Found the Level2Bolt-supervisor: " + specialSupervisors.size());
-			for(SupervisorDetails supervisor : specialSupervisors)
-			{
-				List<WorkerSlot> availableSlots = cluster.getAvailableSlots(supervisor);
-				// if there is no available slots on this supervisor, free some.
-		                // TODO for simplicity, we free all the used slots on the supervisor.
-		                if (availableSlots.isEmpty() && !executors.isEmpty()) {
-		                    for (Integer port : cluster.getUsedPorts(supervisor)) {
-		                        cluster.freeSlot(new WorkerSlot(supervisor.getId(), port));
-	                            }
-	                        }
-
-				// re-get the aviableSlots
-        			availableSlots = cluster.getAvailableSlots(supervisor);
-
-				// since it is just a demo, to keep things simple, we assign all the
-	               		// executors into one slot.
-        	        	cluster.assign(availableSlots.get(0), topology.getId(), executors);
-        	                System.out.println("We assigned executors:" + executors + " to slot: [" + availableSlots.get(0).getNodeId() + ", " + availableSlots.get(0).getPort() + "]");
-			}
-                       
-                    } else {
-                    	System.out.println("There is no supervisor named Level2Bolt-supervisor!!!");
-                    }
-                }*/
             }
         }
         
@@ -307,5 +223,23 @@ public class SimpleScheduler implements IScheduler {
         // makes storm's scheduler composable.
         new EvenScheduler().schedule(topologies, cluster);
     }
+
+	@SuppressWarnings("unchecked")
+	private String findSupervisorNameinWorkerSlot(MultiMap workerSlotClusterBySupervisorMap, WorkerSlot w) {
+		
+		String workerName = w.getNodeId();
+		String supervisorName = "";
+		
+		for(Object key : workerSlotClusterBySupervisorMap.keySet())
+		{
+			for(WorkerSlot ws : (List<WorkerSlot>) workerSlotClusterBySupervisorMap.get(key))
+			{
+				if(ws.getNodeId().equals(workerName))
+						supervisorName = (String)key;
+			}
+		}
+		
+		return supervisorName;
+	}
 
 }

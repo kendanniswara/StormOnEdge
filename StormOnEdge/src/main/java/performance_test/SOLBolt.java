@@ -1,4 +1,4 @@
-package perf_test;
+package performance_test;
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
  *
@@ -48,10 +48,10 @@ private OutputCollector _collector;
 
   
   public void execute(Tuple tuple) {
-	//if(rand.nextInt(10) < 6)
-	    _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1)));
-    
-     _collector.ack(tuple);
+	if(rand.nextInt(10) < 5)
+	  _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1)));
+
+	  _collector.ack(tuple);
   }
 
   @Override

@@ -1,4 +1,4 @@
-package perf_test;
+package performance_test;
 
 /*
  * Copyright (c) 2013 Yahoo! Inc. All Rights Reserved.
@@ -28,6 +28,7 @@ import extractor.PerftestWriter;
 import backtype.storm.Config;
 import backtype.storm.StormSubmitter;
 import backtype.storm.topology.TopologyBuilder;
+import backtype.storm.tuple.Fields;
 import backtype.storm.utils.Utils;
 import backtype.storm.utils.NimbusClient;
 import backtype.storm.generated.Nimbus;
@@ -39,13 +40,11 @@ import backtype.storm.generated.TopologyInfo;
 import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.ExecutorStats;
 
-import java.util.Iterator;
+import grouping.ZoneShuffleGrouping;
+
 import java.util.HashMap;
-import java.util.Set;
 
-import backtype.storm.generated.GlobalStreamId;
-
-public class Main {
+public class StaticMultiZone {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
   @Option(name="--help", aliases={"-h"}, usage="print help message")
@@ -165,10 +164,16 @@ public class Main {
     int numSupervisors = summary.get_supervisors_size();
     int totalSlots = 0;
     int totalUsedSlots = 0;
+    
+    //////////
+    //String namaSupervisor = "";
     for (SupervisorSummary sup: summary.get_supervisors()) {
       totalSlots += sup.get_num_workers();
       totalUsedSlots += sup.get_num_used_workers();
+      //namaSupervisor = namaSupervisor + sup.get_host() + ",";
     }
+    //System.out.println(namaSupervisor);
+    
     int slotsUsedDiff = totalUsedSlots - state.slotsUsed;
     state.slotsUsed = totalUsedSlots;
 
@@ -207,7 +212,7 @@ public class Main {
     state.transferred = totalTransferred;
     //double throughput = (transferredDiff == 0 || time == 0) ? 0.0 : (transferredDiff * size)/(1024.0 * 1024.0)/(time/1000.0);
     //System.out.println(message+"\t"+numTopologies+"\t"+totalSlots+"\t"+totalUsedSlots+"\t"+totalExecutors+"\t"+executorsWithMetrics+"\t"+now+"\t"+time+"\t"+transferredDiff+"\t"+throughput);
-	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time);
+	System.out.println(message+","+totalSlots+","+totalUsedSlots+","+totalExecutors+","+executorsWithMetrics+","+time+",NOLIMIT");
     if ("WAITING".equals(message)) {
       //System.err.println(" !("+totalUsedSlots+" > 0 && "+slotsUsedDiff+" == 0 && "+totalExecutors+" > 0 && "+executorsWithMetrics+" >= "+totalExecutors+")");
     }
@@ -219,7 +224,7 @@ public class Main {
     Map clusterConf = Utils.readStormConfig();
     clusterConf.putAll(Utils.readCommandLineOpts());
     Nimbus.Client client = NimbusClient.getConfiguredClient(clusterConf).getClient();
-
+    
     CmdLineParser parser = new CmdLineParser(this);
     parser.setUsageWidth(80);
     try {
@@ -248,27 +253,70 @@ public class Main {
     }
 
     try {
-      for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
+    	/*
+    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
+        
         TopologyBuilder builder = new TopologyBuilder();
         LOG.info("Adding in "+_spoutParallel+" spouts");
         builder.setSpout("messageSpout", 
-            new SOLSpout(_messageSize, _ackEnabled), _spoutParallel);
+            new SOLSpout(_messageSize, _ackEnabled), 6);
+        
         LOG.info("Adding in "+_boltParallel+" bolts");
-        builder.setBolt("messageBolt1", new SOLBolt(), _boltParallel)
+        builder.setBolt("messageBoltSG1", new SOLBolt(), 6)
             .shuffleGrouping("messageSpout");
-        for (int levelNum = 2; levelNum <= _numLevels; levelNum++) {
-          LOG.info("Adding in "+_boltParallel+" bolts at level "+levelNum);
-          builder.setBolt("messageBolt"+levelNum, new SOLBolt(), _boltParallel)
-              .shuffleGrouping("messageBolt"+(levelNum - 1));
-        }
+        builder.setBolt("messageBoltFG1", new SOLBolt(), 6)
+            .fieldsGrouping("messageBoltSG1", new Fields("fieldValue"));
+        
+        builder.setBolt("messageBoltLocalResult", new SOLBolt(), 2)
+        	.shuffleGrouping("messageBoltFG1");
+        
+        builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            .shuffleGrouping("messageBoltFG1");
+        builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
+        
+        builder.setBolt("messageBoltGlobalResult", new SOLBolt(), 2)
+        .shuffleGrouping("messageBoltFG2");
+        */
+    	
+    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
+            
+            TopologyBuilder builder = new TopologyBuilder();
+            
+            builder.setSpout("messageSpoutA", 
+                    new SOLSpout(_messageSize, _ackEnabled), 6);
+                       
+            builder.setBolt("messageBoltSG_A", new SOLBolt(), 6)
+            	.shuffleGrouping("messageSpoutA");
+            	//.customGrouping("messageSpoutA", new ZoneShuffleGrouping());
+            
+            builder.setBolt("messageBoltFG_A", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            
+            builder.setBolt("messageBoltLocalResult", new SOLFinalBolt(), 2)
+        	.shuffleGrouping("messageBoltFG_A")
+            .shuffleGrouping("messageBoltFG_B")
+            .shuffleGrouping("messageBoltFG_C");
+            
+            builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            .shuffleGrouping("messageBoltFG_A")
+            .shuffleGrouping("messageBoltFG_B")
+            .shuffleGrouping("messageBoltFG_C");
+            
+            builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
+            
+            builder.setBolt("messageBoltGlobalResult", new SOLFinalBolt(), 2)
+            .shuffleGrouping("messageBoltFG2");
 
-        Config conf = new Config();
-        conf.setDebug(_debug);
-        conf.setNumWorkers(_numWorkers);
-        conf.setNumAckers(_ackers);
-        conf.setStatsSampleRate(_sampleRate);        
-        if (_maxSpoutPending > 0) {
-          conf.setMaxSpoutPending(_maxSpoutPending);
+	        Config conf = new Config();
+	        conf.setDebug(_debug);
+	        conf.setNumWorkers(_numWorkers);
+	        conf.setNumAckers(_ackers);
+	        conf.setStatsSampleRate(_sampleRate);        
+	        if (_maxSpoutPending > 0) {
+	          conf.setMaxSpoutPending(_maxSpoutPending);
         }
 
         StormSubmitter.submitTopology(_name+"_"+topoNum, conf, builder.createTopology());
@@ -291,6 +339,7 @@ public class Main {
   }
   
   public static void main(String[] args) throws Exception {
-    new Main().realMain(args);
+    new StaticMultiZone().realMain(args);
   }
 }
+

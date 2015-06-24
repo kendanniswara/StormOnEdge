@@ -18,18 +18,25 @@ import org.mortbay.util.MultiMap;
 public class ZoneShuffleGrouping implements CustomStreamGrouping {
 
 	private static final long serialVersionUID = -4062741858518237161L;
-	List<Integer> choosenTasks;
 	MultiMap supervisorTaskMap = new MultiMap();
 	HashMap<Integer, String> taskSupNameMap = new HashMap<Integer,String>();
+	List<Integer> targetList;
 	
 	HashMap<Integer, List<Integer>> taskResultList = new HashMap<Integer, List<Integer>>();
 	
 	@SuppressWarnings("unchecked")
 	public void prepare(WorkerTopologyContext context, GlobalStreamId stream, List<Integer> targetTasks) {
 		
+		targetList = targetTasks;
+		
 		getListFromFile();
-		choosenTasks = targetTasks;
-				
+		for(Integer source : context.getComponentTasks(stream.get_componentId()))
+		{
+			taskResultList.put(source, findIntersections(targetTasks, (List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(source))));
+		}
+		
+		/*
+		//Extra for debugging
 		StringBuilder sb = new StringBuilder();
 		
 		sb.append("-------------------------\n");
@@ -53,29 +60,28 @@ public class ZoneShuffleGrouping implements CustomStreamGrouping {
 			writer.write(sb.toString());
 			writer.close();
 		}catch(Exception e){ }
-		
-		///////////
-		for(Integer source : context.getComponentTasks(stream.get_componentId()))
-		{
-			taskResultList.put(source, setIntersections((List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(source))));
-		}
-		
+		*/
 	}
 
 	public List<Integer> chooseTasks(int taskId, List<Object> values) {		
 		//return setIntersections((List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(new Integer(taskId))));
-		return taskResultList.get(new Integer(taskId));
+		List<Integer> result = taskResultList.get(new Integer(taskId));
+		
+		if (result == null || result.isEmpty())
+			result = targetList;
+		
+		return result;
 	}
 	
-	private List<Integer> setIntersections(List<Integer> fromSupervisor)
+	private List<Integer> findIntersections(List<Integer> choosenTasks, List<Integer> fromSupervisor)
 	{
-		List<Integer> temp = new ArrayList<Integer>();		
+		List<Integer> temp = new ArrayList<Integer>();
+		
 		for(Integer i : choosenTasks)
 		{
 			if(fromSupervisor.contains(i))
 				temp.add(i);
 		}
-		
 		return temp;
 	}
 	

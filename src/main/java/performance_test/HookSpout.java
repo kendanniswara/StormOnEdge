@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.LoggerFactory;
 
-public class SOEBasicHook extends BaseTaskHook {
+public class HookSpout extends BaseTaskHook {
 
 	//private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(SOEBasicHook.class);
 	
@@ -53,7 +53,7 @@ public class SOEBasicHook extends BaseTaskHook {
 	
 	@Override
     public void spoutAck(SpoutAckInfo info) {
-        
+		
         if (info.completeLatencyMs != null) {
         	latencyCompleteTimeList.add(info.completeLatencyMs);
         	Ackcounter++;
@@ -76,11 +76,11 @@ public class SOEBasicHook extends BaseTaskHook {
         		if(counter >= printCycle)
         		{
         			try {
-        				FileWriter writer = new FileWriter("/home/kend/HookOut.csv", true);
+        				FileWriter writer = new FileWriter("/home/kend/Spout-LatencyHook.csv", true);
         				writer.write(latencyResultString.toString());
         				writer.close();
         				
-        				writer = new FileWriter("/home/kend/CounterOut.csv", true);
+        				writer = new FileWriter("/home/kend/Spout-LatencyCounter.csv", true);
         				writer.write(counterResultString.toString());
         				writer.close();
         			}catch(Exception e){e.printStackTrace();}

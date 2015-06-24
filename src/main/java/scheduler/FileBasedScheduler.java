@@ -24,10 +24,9 @@ import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
-public class SimpleScheduler implements IScheduler {
+public class FileBasedScheduler implements IScheduler {
 	
-	String topologyName = "test_0";
-	Random rand = new Random();
+	Random rand = new Random(System.currentTimeMillis());
     public void prepare(Map conf) {}
 
     @SuppressWarnings("unchecked")
@@ -35,7 +34,7 @@ public class SimpleScheduler implements IScheduler {
         // Gets the topology which we want to schedule
     //TopologyDetails topology = topologies.getByName(topologyName);
     
-    System.out.println("DemoScheduler: begin scheduling");
+    System.out.println("FileBasedScheduler: begin scheduling");
 
     //HARDCODE
     HashMap<String,String> componentSupervisorPair = new HashMap<String, String>();
@@ -53,10 +52,7 @@ public class SimpleScheduler implements IScheduler {
     	
     	line = textReader.readLine();
     }
-    //taskSupervisorPair.put("messageSpout", "edge-supervisor");
-    //taskSupervisorPair.put("messageBolt1", "Level1Bolt-supervisor");
-    //taskSupervisorPair.put("messageBolt2", "Level2Bolt-supervisor");
-    //taskSupervisorPair.put("messageBolt3", "Level2Bolt-supervisor");
+    //taskSupervisorPair.put("messageSpout", "edge-supervisor");  
     
     textReader.close();
     }catch(IOException e){e.printStackTrace();}
@@ -71,7 +67,6 @@ public class SimpleScheduler implements IScheduler {
 			Map<String, List<ExecutorDetails>> componentToExecutors = cluster.getNeedsSchedulingComponentToExecutors(topology);
                 
             System.out.println("needs scheduling(component->executor): " + componentToExecutors);
-            //System.out.println("needs scheduling(executor->compoenents): " + cluster.getNeedsSchedulingExecutorToComponents(topology));
             SchedulerAssignment currentAssignment = cluster.getAssignmentById(topology.getId());
             
             if (currentAssignment != null) {
@@ -95,7 +90,6 @@ public class SimpleScheduler implements IScheduler {
             for (SupervisorDetails supervisor : supervisors) {
                 Map meta = (Map) supervisor.getSchedulerMeta();
                 
-                //taskClusterBySupervisorMap.addValues(meta.get("name"), new ArrayList<Integer>());
                 workerSlotClusterBySupervisorMap.addValues(meta.get("name"), cluster.getAvailableSlots(supervisor));
             }
             
@@ -121,7 +115,7 @@ public class SimpleScheduler implements IScheduler {
             	}
             	else
             	{
-            		System.out.println("Get all workers with value : " + componentSupervisorPair.get(executorKey));
+            		System.out.println("Get workers with value : " + componentSupervisorPair.get(executorKey));
             		String[] workersName = componentSupervisorPair.get(executorKey).split(",");
             		for(int ii = 0; ii < workersName.length; ii++)
             		{
@@ -184,6 +178,8 @@ public class SimpleScheduler implements IScheduler {
             	}
             }
             
+            //Assign the tasks into cluster
+            StringBuilder workerStringBuilder = new StringBuilder();
             for(Object ws : workerExecutors.keySet())
         	{
             	List<ExecutorDetails> edetails = (List<ExecutorDetails>) workerExecutors.getValues(ws);
@@ -191,7 +187,15 @@ public class SimpleScheduler implements IScheduler {
             	
         		cluster.assign(wslot, topology.getId(), edetails);
         		System.out.println("We assigned executors:" + workerExecutors.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]");
+        		workerStringBuilder.append(workerExecutors.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]\n");
         	}
+            
+            try {
+				FileWriter writer = new FileWriter("/home/kend/SchedulerResult.csv", false);
+				writer.write(workerStringBuilder.toString());
+				writer.close();
+			}catch(Exception e){ }
+            
             
             StringBuilder taskStringBuilder = new StringBuilder();            
             for(Object sup : taskClusterBySupervisorMap.keySet())

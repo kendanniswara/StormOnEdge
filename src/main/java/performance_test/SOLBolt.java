@@ -44,12 +44,13 @@ private OutputCollector _collector;
     _collector = collector;
     rand = new Random();
 
+    context.addTaskHook(new HookBolt());
   }
 
   
   public void execute(Tuple tuple) {
-	if(rand.nextInt(10) < 5)
-	  _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1)));
+	if(rand.nextInt(10) < 6)
+	  _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1), tuple.getLong(2)));
 
 	  _collector.ack(tuple);
   }
@@ -60,6 +61,6 @@ private OutputCollector _collector;
 
 
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    declarer.declare(new Fields("message", "fieldValue"));
+    declarer.declare(new Fields("message", "fieldValue", "timeStamp"));
   }
 }

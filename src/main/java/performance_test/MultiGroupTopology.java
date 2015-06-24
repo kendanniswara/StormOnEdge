@@ -39,12 +39,12 @@ import backtype.storm.generated.TopologySummary;
 import backtype.storm.generated.TopologyInfo;
 import backtype.storm.generated.ExecutorSummary;
 import backtype.storm.generated.ExecutorStats;
-
+import grouping.ZoneFieldsGrouping;
 import grouping.ZoneShuffleGrouping;
 
 import java.util.HashMap;
 
-public class StaticMultiZone {
+public class MultiGroupTopology {
   private static final Log LOG = LogFactory.getLog(Main.class);
 
   @Option(name="--help", aliases={"-h"}, usage="print help message")
@@ -252,63 +252,75 @@ public class StaticMultiZone {
       _ackers = 0;
     }
 
-    try {
-    	/*
-    	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
-        
-        TopologyBuilder builder = new TopologyBuilder();
-        LOG.info("Adding in "+_spoutParallel+" spouts");
-        builder.setSpout("messageSpout", 
-            new SOLSpout(_messageSize, _ackEnabled), 6);
-        
-        LOG.info("Adding in "+_boltParallel+" bolts");
-        builder.setBolt("messageBoltSG1", new SOLBolt(), 6)
-            .shuffleGrouping("messageSpout");
-        builder.setBolt("messageBoltFG1", new SOLBolt(), 6)
-            .fieldsGrouping("messageBoltSG1", new Fields("fieldValue"));
-        
-        builder.setBolt("messageBoltLocalResult", new SOLBolt(), 2)
-        	.shuffleGrouping("messageBoltFG1");
-        
-        builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
-            .shuffleGrouping("messageBoltFG1");
-        builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
-            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
-        
-        builder.setBolt("messageBoltGlobalResult", new SOLBolt(), 2)
-        .shuffleGrouping("messageBoltFG2");
-        */
-    	
+    try {    	
     	for (int topoNum = 0; topoNum < _numTopologies; topoNum++) {
             
             TopologyBuilder builder = new TopologyBuilder();
             
-            builder.setSpout("messageSpoutA", 
-                    new SOLSpout(_messageSize, _ackEnabled), 6);
+            builder.setSpout("messageSpoutA", new SOLSpout(_messageSize, _ackEnabled), 2);
+            builder.setSpout("messageSpoutB", new SOLSpout(_messageSize, _ackEnabled), 2);
+            builder.setSpout("messageSpoutC", new SOLSpout(_messageSize, _ackEnabled), 2);
                        
-            builder.setBolt("messageBoltSG_A", new SOLBolt(), 6)
-            	.shuffleGrouping("messageSpoutA");
-            	//.customGrouping("messageSpoutA", new ZoneShuffleGrouping());
+            builder.setBolt("messageBoltSG_A", new SOLBolt(), 2).shuffleGrouping("messageSpoutA");
+            builder.setBolt("messageBoltSG_B", new SOLBolt(), 2).shuffleGrouping("messageSpoutB");
+            builder.setBolt("messageBoltSG_C", new SOLBolt(), 2).shuffleGrouping("messageSpoutC");
             
             builder.setBolt("messageBoltFG_A", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
-            builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
-            builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_B", new Fields("fieldValue"));
+            builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_C", new Fields("fieldValue"));
             
-            builder.setBolt("messageBoltLocalResult", new SOLFinalBolt(), 2)
-        	.shuffleGrouping("messageBoltFG_A")
-            .shuffleGrouping("messageBoltFG_B")
-            .shuffleGrouping("messageBoltFG_C");
+            builder.setBolt("messageBoltLocalResultA", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_A");
+            builder.setBolt("messageBoltLocalResultB", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_B");
+            builder.setBolt("messageBoltLocalResultC", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltFG_C");
+            
+            builder.setBolt("messageBoltLocalAggregatorResult", new SOLFinalBolt(), 2)
+        		.shuffleGrouping("messageBoltFG_A")
+        		.shuffleGrouping("messageBoltFG_B")
+        		.shuffleGrouping("messageBoltFG_C");
             
             builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
-            .shuffleGrouping("messageBoltFG_A")
-            .shuffleGrouping("messageBoltFG_B")
-            .shuffleGrouping("messageBoltFG_C");
+            	.shuffleGrouping("messageBoltFG_A")
+        		.shuffleGrouping("messageBoltFG_B")
+        		.shuffleGrouping("messageBoltFG_C");
             
             builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
-            .fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
+            	.fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
             
             builder.setBolt("messageBoltGlobalResult", new SOLFinalBolt(), 2)
-            .shuffleGrouping("messageBoltFG2");
+            	.shuffleGrouping("messageBoltFG2");
+            
+            /*****************************************************
+             
+            builder.setSpout("messageSpoutA", new SOLSpout(_messageSize, _ackEnabled), 6);
+                       
+            builder.setBolt("messageBoltSG_A", new SOLBolt(), 6)
+            	//.shuffleGrouping("messageSpoutA");
+            	.customGrouping("messageSpoutA", new ZoneShuffleGrouping());
+            
+            builder.setBolt("messageBoltFG_A", new SOLBolt(), 6)
+            	//.fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            	.customGrouping("messageBoltSG_A", new ZoneFieldsGrouping(new Fields("fieldValue")));
+            
+            //builder.setBolt("messageBoltFG_B", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            //builder.setBolt("messageBoltFG_C", new SOLBolt(), 2).fieldsGrouping("messageBoltSG_A", new Fields("fieldValue"));
+            
+            builder.setBolt("messageBoltLocalResult", new SOLFinalBolt(), 6)
+    		.customGrouping("messageBoltFG_A", new ZoneShuffleGrouping());
+            
+            builder.setBolt("messageBoltLocalAggregatorResult", new SOLFinalBolt(), 2)
+        		.shuffleGrouping("messageBoltFG_A");
+            
+            builder.setBolt("messageBoltSG2", new SOLBolt(), 4)
+            	.shuffleGrouping("messageBoltFG_A");
+            
+            builder.setBolt("messageBoltFG2", new SOLBolt(), 4)
+            	.fieldsGrouping("messageBoltSG2", new Fields("fieldValue"));
+            	//.customGrouping("messageBoltSG2", new ZoneFieldsGrouping(new Fields("fieldValue")));
+            
+            builder.setBolt("messageBoltGlobalResult", new SOLFinalBolt(), 2)
+            	.globalGrouping("messageBoltFG2");
+            	
+             *****************************************************/
 
 	        Config conf = new Config();
 	        conf.setDebug(_debug);
@@ -339,7 +351,7 @@ public class StaticMultiZone {
   }
   
   public static void main(String[] args) throws Exception {
-    new StaticMultiZone().realMain(args);
+    new MultiGroupTopology().realMain(args);
   }
 }
 

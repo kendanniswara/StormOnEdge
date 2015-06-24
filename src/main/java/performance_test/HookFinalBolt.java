@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.slf4j.LoggerFactory;
 
-public class SOEFinalBoltHook extends BaseTaskHook {
+public class HookFinalBolt extends BaseTaskHook {
 
 	//private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(SOEBasicHook.class);
 	
@@ -30,6 +30,7 @@ public class SOEFinalBoltHook extends BaseTaskHook {
 	long Ackcounter = 0;
 	
 	int port;
+	String taskName;
 	
 	@Override
     public void prepare(Map conf, TopologyContext context) {
@@ -48,18 +49,21 @@ public class SOEFinalBoltHook extends BaseTaskHook {
 		latencyResultString = new StringBuilder();
 		counterResultString = new StringBuilder();
 		
+		taskName = context.getThisComponentId();
 		port = context.getThisWorkerPort();
     }
 	
 	@Override
-	public void boltAck(BoltAckInfo info) {
+	public void boltExecute(BoltExecuteInfo info) {
 		// TODO Auto-generated method stub
 		
-        if (info.processLatencyMs != null) {
-        	latencyCompleteTimeList.add(info.processLatencyMs);
+		
+        if (info.tuple != null) {
+        	timeStamp = System.currentTimeMillis();
+        	
+        	latencyCompleteTimeList.add(timeStamp - info.tuple.getLong(2));
         	Ackcounter++;
         	
-        	timeStamp = System.currentTimeMillis();
         	if(timeStamp-now > cycle)
         	{
         		counter++;
@@ -67,8 +71,8 @@ public class SOEFinalBoltHook extends BaseTaskHook {
         		double ltAverage = average(latencyCompleteTimeList);
         		        	
         		//LOG.info(timeMod + ",Average," + ltAverage);
-        		latencyResultString.append(port + ","+ timeMod + ",Average," + ltAverage + "\n");
-        		counterResultString.append(port + ","+ timeMod + ",AckCounter," + Ackcounter + "\n");
+        		latencyResultString.append(taskName + ","+ timeMod + ",Average," + ltAverage + "\n");
+        		counterResultString.append(taskName + ","+ timeMod + ",AckCounter," + Ackcounter + "\n");
         		
         		now = timeStamp;
         		latencyCompleteTimeList.clear();
@@ -77,11 +81,11 @@ public class SOEFinalBoltHook extends BaseTaskHook {
         		if(counter >= printCycle)
         		{
         			try {
-        				//FileWriter writer = new FileWriter("/home/kend/boltHookOut.csv", true);
-        				//writer.write(latencyResultString.toString());
-        				//writer.close();
+        				FileWriter writer = new FileWriter("/home/kend/Bolt-FinalLatencyHook.csv", true);
+        				writer.write(latencyResultString.toString());
+        				writer.close();
         				
-        				FileWriter writer = new FileWriter("/home/kend/boltCounterOut.csv", true);
+        				writer = new FileWriter("/home/kend/Bolt-CounterHook.csv", true);
         				writer.write(counterResultString.toString());
         				writer.close();
         			}catch(Exception e){ }
@@ -92,7 +96,7 @@ public class SOEFinalBoltHook extends BaseTaskHook {
         		}
         	}
         }
-        super.boltAck(info);
+        super.boltExecute(info);
     }
     
     public double average(ArrayList<Long> list) {

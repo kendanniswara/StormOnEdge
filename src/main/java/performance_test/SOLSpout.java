@@ -39,7 +39,7 @@ public class SOLSpout extends BaseRichSpout {
   private boolean _ackEnabled;
   private Random _rand = null;
   private String nodeName;
-  
+  private long timeStamp;
   
   public SOLSpout(int sizeInBytes, boolean ackEnabled) {
     if(sizeInBytes < 0) {
@@ -68,9 +68,9 @@ public class SOLSpout extends BaseRichSpout {
       }
       _messages[i] = sb.toString();
     }
-    nodeName = context.getThisComponentId();
+    nodeName = context.getThisWorkerPort().toString() + "," + context.getThisTaskId();
     
-    context.addTaskHook(new SOEBasicHook());
+    context.addTaskHook(new HookSpout());
   }
 
   @Override
@@ -80,14 +80,15 @@ public class SOLSpout extends BaseRichSpout {
 
   public void nextTuple() {
     final String message = _messages[_rand.nextInt(_messages.length)];
+    timeStamp = System.currentTimeMillis();
     //String fieldValue = String.valueOf(_rand.nextInt(10));
     
     //if (_messageCount < 7000)
     //{
 	    if(_ackEnabled) {
-	      _collector.emit(new Values(message, nodeName), _messageCount);
+	      _collector.emit(new Values(message, nodeName, timeStamp), _messageCount);
 	    } else {
-	      _collector.emit(new Values(message, nodeName));
+	      _collector.emit(new Values(message, nodeName, timeStamp));
 	    }
 	    _messageCount++;
     //}
@@ -109,7 +110,7 @@ public class SOLSpout extends BaseRichSpout {
 
 public void declareOutputFields(OutputFieldsDeclarer declarer) {
 	// TODO Auto-generated method stub
-	declarer.declare(new Fields("message", "fieldValue"));
+	declarer.declare(new Fields("message", "fieldValue", "timeStamp"));
 }
   
   

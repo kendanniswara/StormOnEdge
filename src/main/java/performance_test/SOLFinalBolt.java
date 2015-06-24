@@ -27,13 +27,12 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
 
 public class SOLFinalBolt extends BaseRichBolt {
-/**
+	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -7418734359875255034L;
 	
 private OutputCollector _collector;
-private Random rand;
 
   public SOLFinalBolt() {
     //Empty
@@ -42,15 +41,14 @@ private Random rand;
   
   public void prepare(Map conf, TopologyContext context, OutputCollector collector) {
     _collector = collector;
-    rand = new Random();
 
-    context.addTaskHook(new SOEFinalBoltHook());
+    context.addTaskHook(new HookFinalBolt());
   }
 
   
   public void execute(Tuple tuple) {
 	//if(rand.nextInt(10) < 6)  
-	  _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1)));
+	  _collector.emit(tuple, new Values(tuple.getString(0), tuple.getString(1), tuple.getLong(2)));
 
 	  _collector.ack(tuple);
   }
@@ -61,6 +59,6 @@ private Random rand;
 
 
   public void declareOutputFields(OutputFieldsDeclarer declarer) {
-    declarer.declare(new Fields("message", "fieldValue"));
+    declarer.declare(new Fields("message", "fieldValue", "timeStamp"));
   }
 }

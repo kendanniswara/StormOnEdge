@@ -39,7 +39,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	
 	Random rand = new Random(System.currentTimeMillis());
 	JSONParser parser = new JSONParser();
-	CloudLocator clocator = new CloudLocator("/home/kend/fromSICSCloud/Scheduler-MinMaxMatrix.txt");
+	CloudLocator clocator = new CloudLocator("/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt");
 	
     public void prepare(Map conf) {}
 
@@ -363,10 +363,13 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						}
 						
 						System.out.println("-cloudDependencies: " + cloudDependencies);
-						
-						String choosenCloud = clocator.MinMaxLatency(cloudNameList, cloudDependencies);
+						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudNameList, cloudDependencies);
+						//String choosenCloud = "CloudMidA";
 						
 						System.out.println("-choosenCloud: " + choosenCloud);
+						
+						if(choosenCloud == null)
+							System.out.println("WARNING! no cloud chosen for this group!");
 						
 						for(String bolt : globalGroup.boltNames)
 						{
@@ -428,7 +431,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	Iterator<WorkerSlot> workerIterator = workers.iterator();
     	Iterator<ExecutorDetails> executorIterator = executors.iterator();
 
-    	//if more executors than workers, do simple round robin
+    	//if executors > workers, do simple round robin
     	//for all executors A to all supervisors B
     	if(executors.size() >= workers.size())
     	{
@@ -438,17 +441,13 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         		ExecutorDetails ed = executorIterator.next();
         		executorWorkerMap.add(w, ed);
         		
-        		//String SupName = findSupervisorNameinWorkerSlot(workerSlotClusterBySupervisorMap, w);
-        		//for(int ii = ed.getStartTask(); ii <= ed.getEndTask(); ii++)
-        			//taskClusterBySupervisorMap.add(SupName, new Integer(ii));
-        		
-        		//reset to 0 again
+        		//Reset to first worker again
         		if(!workerIterator.hasNext())
         			workerIterator = workers.iterator();
         	}
     	}
     	
-    	//if more workers than executors, choose randomly
+    	//if workers > executors, choose randomly
     	//for all executors A to all supervisors B
     	else
     	{
@@ -457,10 +456,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         		WorkerSlot w = workers.get(rand.nextInt(workers.size()));
         		ExecutorDetails ed = executorIterator.next();
         		executorWorkerMap.add(w, ed);
-        		
-        		//String SupName = findSupervisorNameinWorkerSlot(workerSlotClusterBySupervisorMap, w);
-        		//for(int ii = ed.getStartTask(); ii <= ed.getEndTask(); ii++)
-        			//taskClusterBySupervisorMap.add(SupName, new Integer(ii));
         	}
     	}
     }

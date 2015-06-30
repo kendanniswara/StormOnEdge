@@ -38,7 +38,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	
 	Random rand = new Random(System.currentTimeMillis());
 	JSONParser parser = new JSONParser();
-	CloudLocator clocator = new CloudLocator("/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt");
+	String clocatorFile = "/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt";
+	CloudLocator clocator = new CloudLocator(clocatorFile);
 	
 	LinkedHashMap<String, SchedulerGroup> localGroupNameList;
     LinkedHashMap<String, SchedulerGroup> globalGroupNameList;
@@ -390,6 +391,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						Set<String> cloudSet = supervisorsByCloudName.keySet();
 						System.out.println("-cloudDependencies: " + cloudDependencies);
+						clocator.update(clocatorFile);
 						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA";
 						

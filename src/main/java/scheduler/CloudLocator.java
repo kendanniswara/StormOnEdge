@@ -71,6 +71,7 @@ public class CloudLocator {
 	
 	public String getCloudBasedOnLatency(CloudLocator.Type type, Set<String> cloudNameList, Set<String> cloudDependencies)
 	{
+		
 		String cloud = null;
 		
 		if(type == Type.MinMax)

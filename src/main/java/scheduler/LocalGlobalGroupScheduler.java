@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -22,14 +23,12 @@ import org.mortbay.util.MultiMap;
 
 import backtype.storm.generated.Bolt;
 import backtype.storm.generated.GlobalStreamId;
-import backtype.storm.generated.Grouping;
 import backtype.storm.generated.SpoutSpec;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.Cluster;
 import backtype.storm.scheduler.EvenScheduler;
 import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.scheduler.IScheduler;
-import backtype.storm.scheduler.SchedulerAssignment;
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
@@ -41,6 +40,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	JSONParser parser = new JSONParser();
 	CloudLocator clocator = new CloudLocator("/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt");
 	
+	LinkedHashMap<String, SchedulerGroup> localGroupNameList;
+    LinkedHashMap<String, SchedulerGroup> globalGroupNameList;
+	
     public void prepare(Map conf) {}
 
     @SuppressWarnings("unchecked")
@@ -49,9 +51,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 	
 	    HashMap<String,String[]> spoutCloudsPair = new HashMap<String, String[]>();
-	    List<String> cloudNameList = new ArrayList<String>();
-	    LinkedHashMap<String, SchedulerGroup> localGroupNameList = new LinkedHashMap<String,SchedulerGroup>();
-	    LinkedHashMap<String, SchedulerGroup> globalGroupNameList = new LinkedHashMap<String,SchedulerGroup>();
+	    //Set<String> cloudNameSet = new LinkedHashSet<String>();
+	    localGroupNameList = new LinkedHashMap<String,SchedulerGroup>();
+	    globalGroupNameList = new LinkedHashMap<String,SchedulerGroup>();
 	    
 	    //Reading the information from file
 	    FileReader pairDataFile; 
@@ -83,6 +85,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 		    //---------------
 		    //get cloud names
 		    //---------------
+		    /*
 		    pairDataFile = new FileReader("/home/kend/fromSICSCloud/Scheduler-CloudList.txt");
 		    textReader  = new BufferedReader(pairDataFile);
 		    
@@ -92,13 +95,13 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 		    	//Format
 		    	//cloudName
 		    	System.out.println("Read from file: " + line);
-		    	cloudNameList.add(line);
+		    	cloudNameSet.add(line);
 		    	
 		    	line = textReader.readLine();
 		    }
 		    textReader.close();
 		    
-		    
+		    */
 		    //---------------
 		    //get group names
 		    //---------------
@@ -139,6 +142,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         for (SupervisorDetails supervisor : supervisors) {
         	Map<String, Object> metadata = (Map<String, Object>)supervisor.getSchedulerMeta();
         	if(metadata.get("cloud-name") != null){
+        		//cloudNameSet.add(metadata.get("cloud-name").toString());
         		supervisorsByCloudName.add(metadata.get("cloud-name"), supervisor);
         		workersByCloudName.addValues(metadata.get("cloud-name"), cluster.getAvailableSlots(supervisor));
         	}
@@ -154,7 +158,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("");
         }
         
-        if(spoutCloudsPair.size() == 0 || cloudNameList.size() == 0 || globalGroupNameList.size() == 0)
+        if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
         {
         	System.out.println("Reading is not complete, stop scheduling for now");
         	return;
@@ -186,22 +190,25 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
-							SchedulerGroup schedulergroup;
+							SchedulerGroup schedulergroup = null;
 							
 							//each task only reside in one group
 							if(localGroupNameList.containsKey(groupName))
 								schedulergroup = localGroupNameList.get(groupName);
-							else
+							else if(globalGroupNameList.containsKey(groupName))
 								schedulergroup = globalGroupNameList.get(groupName);
 							
 							if(schedulergroup != null)
 							{
-								schedulergroup.spoutNames.add(name);
-								schedulergroup.spoutParallel.put(name, s.get_common().get_parallelism_hint());
+								schedulergroup.spoutsWithParInfo.put(name, s.get_common().get_parallelism_hint());
 								for(String cloudName : spoutCloudsPair.get(name))
 								{
 									schedulergroup.clouds.add(cloudName);
 								}
+							}
+							else
+							{
+								System.out.println("ERROR: " + name + " don't have any valid group. This task will be ignored in scheduling");
 							}
 						}
 						
@@ -220,24 +227,42 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
-							SchedulerGroup schedulergroup;
+							SchedulerGroup schedulergroup = null;
 							
 							//each task only reside in one group
 							if(localGroupNameList.containsKey(groupName))
 								schedulergroup = localGroupNameList.get(groupName);
-							else
+							else if(globalGroupNameList.containsKey(groupName))
 								schedulergroup = globalGroupNameList.get(groupName);
+							/*else
+							{
+								SchedulerGroup newGroup = new SchedulerGroup(groupName);
+								//create new SchedulerGroup
+								if(groupName.contains("Local"))
+								{
+									localGroupNameList.put(groupName, newGroup);
+									schedulergroup = newGroup;
+								}
+								else if (groupName.contains("Global"))
+								{
+									globalGroupNameList.put(groupName, newGroup);
+									schedulergroup = newGroup;
+								}
+							}*/
 							
 							if(schedulergroup != null)
 							{
-								schedulergroup.boltNames.add(name);
-								schedulergroup.boltParallel.put(name, b.get_common().get_parallelism_hint());
+								schedulergroup.boltsWithParInfo.put(name, b.get_common().get_parallelism_hint());
 								
 								for(GlobalStreamId streamId : inputStreams)
 								{
 									System.out.println("--dependent to " + streamId.get_componentId());
-									schedulergroup.boltDependence.add(streamId.get_componentId());
+									schedulergroup.boltDependences.add(streamId.get_componentId());
 								}
+							}
+							else
+							{
+								System.out.println("ERROR: " + name + " don't have any valid group. This task will be ignored in scheduling");
 							}
 						}
 						
@@ -254,11 +279,11 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 					
 						System.out.println("LOG: " + localGroup.name + "distribution");
 						
-						for(String spout : localGroup.spoutNames)
+						for(String spout : localGroup.spoutsWithParInfo.keySet())
 						{
 							System.out.println("-" + spout);
 							List<ExecutorDetails> executors = componentToExecutors.get(spout);
-							int parHint = localGroup.spoutParallel.get(spout);
+							int parHint = localGroup.spoutsWithParInfo.get(spout);
 							
 							if(executors == null)
 			            	{
@@ -298,11 +323,11 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            	}
 						}
 						
-						for(String bolt : localGroup.boltNames)
+						for(String bolt : localGroup.boltsWithParInfo.keySet())
 						{
 							System.out.println("-" + bolt);
 							List<ExecutorDetails> executors = componentToExecutors.get(bolt);
-							int parHint = localGroup.boltParallel.get(bolt);
+							int parHint = localGroup.boltsWithParInfo.get(bolt);
 							
 							if(executors == null)
 			            	{
@@ -354,7 +379,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						System.out.println("LOG: " + globalGroup.name + " distribution");
 						
 						Set<String> cloudDependencies = new HashSet<String>();
-						for(String dependentExecutors : globalGroup.boltDependence)
+						for(String dependentExecutors : globalGroup.boltDependences)
 						{
 							if(executorCloudMap.getValues(dependentExecutors) == null)
 								continue;
@@ -363,7 +388,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						}
 						
 						System.out.println("-cloudDependencies: " + cloudDependencies);
-						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudNameList, cloudDependencies);
+						Set<String> cloudSet = supervisorsByCloudName.keySet();
+						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA";
 						
 						System.out.println("-choosenCloud: " + choosenCloud);
@@ -371,7 +397,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						if(choosenCloud == null)
 							System.out.println("WARNING! no cloud chosen for this group!");
 						
-						for(String bolt : globalGroup.boltNames)
+						for(String bolt : globalGroup.boltsWithParInfo.keySet())
 						{
 							System.out.println("---" + bolt);
 							List<ExecutorDetails> executors = componentToExecutors.get(bolt);
@@ -495,11 +521,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 class SchedulerGroup {
 	public String name;
 	public List<String> clouds = new ArrayList<String>();
-	public List<String> spoutNames = new ArrayList<String>();
-	public Map<String,Integer> spoutParallel = new HashMap<String, Integer>();
-	public List<String> boltNames = new ArrayList<String>();
-	public Map<String,Integer> boltParallel = new HashMap<String, Integer>();
-	public Set<String> boltDependence = new HashSet<String>();
+	public LinkedHashMap<String,Integer> spoutsWithParInfo = new LinkedHashMap<String, Integer>();
+	public LinkedHashMap<String,Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
+	public Set<String> boltDependences = new HashSet<String>();
 	
 	public SchedulerGroup(String Groupname) {
 		name = Groupname;

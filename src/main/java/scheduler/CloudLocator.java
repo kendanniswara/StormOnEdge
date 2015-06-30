@@ -69,7 +69,7 @@ public class CloudLocator {
 	    }catch(IOException e){}
 	}
 	
-	public String getCloudBasedOnLatency(CloudLocator.Type type, List<String> cloudNameList, Set<String> cloudDependencies)
+	public String getCloudBasedOnLatency(CloudLocator.Type type, Set<String> cloudNameList, Set<String> cloudDependencies)
 	{
 		String cloud = null;
 		
@@ -81,7 +81,7 @@ public class CloudLocator {
 		return cloud;
 	}
 
-	private String minMaxLatency(List<String> cloudNameList, Set<String> cloudDependencies) {
+	private String minMaxLatency(Set<String> cloudNameList, Set<String> cloudDependencies) {
 		String bestCloud = null;
 		float lowestMaxLatency = Float.MAX_VALUE;
 		
@@ -118,7 +118,7 @@ public class CloudLocator {
     	return bestCloud;
 	}
 	
-	private String avgLatency(List<String> cloudNameList, Set<String> cloudDependencies) {
+	private String avgLatency(Set<String> cloudNameList, Set<String> cloudDependencies) {
 		
 		String bestCloud = null;
 		float lowestAvgLatency = Float.MAX_VALUE;

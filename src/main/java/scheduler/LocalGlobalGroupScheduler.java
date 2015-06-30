@@ -305,7 +305,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            			List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
 			            			
 			            			System.out.println("---" + cloudName + "\n" + "-----subexecutors:" + subexecutors);
-			            			System.out.println("-----workers:" + workers);
+			            			//System.out.println("-----workers:" + workers);
 			            			
 			            			if(workers == null || workers.isEmpty())
 			    	            		System.out.println(localGroup.name + ": " + cloudName + ": No workers");
@@ -349,7 +349,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            			List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
 			            			
 			            			System.out.println("---" + cloudName + "\n" + "-----subexecutors:" + subexecutors);
-			            			System.out.println("-----workers:" + workers);
+			            			//System.out.println("-----workers:" + workers);
 			            			
 			            			if(workers == null || workers.isEmpty())
 			    	            		System.out.println(localGroup.name + ": " + cloudName + ": No workers");
@@ -387,8 +387,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 								cloudDependencies.addAll((List<String>) executorCloudMap.getValues(dependentExecutors));
 						}
 						
-						System.out.println("-cloudDependencies: " + cloudDependencies);
+						
 						Set<String> cloudSet = supervisorsByCloudName.keySet();
+						System.out.println("-cloudDependencies: " + cloudDependencies);
 						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA";
 						

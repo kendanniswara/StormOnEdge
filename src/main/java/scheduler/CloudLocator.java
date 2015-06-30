@@ -91,6 +91,10 @@ public class CloudLocator {
 		{
 			float currentMaxLatency = 0;
 			
+			//Pass cloud is not registered in the latency table
+			if(cloudNames.indexOf(cloud) == -1)
+				continue;
+			
 			//Make sure the chosen cloud is different from their dependencies
 			if(cloudDependencies.contains(cloud))
 				continue;

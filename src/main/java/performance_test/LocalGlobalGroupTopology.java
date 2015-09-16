@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.thrift7.TException;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -34,6 +35,8 @@ import backtype.storm.utils.NimbusClient;
 import backtype.storm.generated.Nimbus;
 import backtype.storm.generated.KillOptions;
 import backtype.storm.generated.ClusterSummary;
+import backtype.storm.generated.Nimbus.Client;
+import backtype.storm.generated.NotAliveException;
 import backtype.storm.generated.SupervisorSummary;
 import backtype.storm.generated.TopologySummary;
 import backtype.storm.generated.TopologyInfo;
@@ -112,6 +115,8 @@ public class LocalGlobalGroupTopology {
     int slotsUsed = 0;
     long lastTime = 0;
   }
+  
+  private boolean printOnce = true;
 
 
   public void metrics(Nimbus.Client client, int size, int poll, int total) throws Exception {
@@ -145,7 +150,17 @@ public class LocalGlobalGroupTopology {
     now = System.currentTimeMillis();
     long end = now + (total * 1000);
     do {
+    	
+    	/// one time print addition
+        if(printOnce)
+        {
+      	  printExecutorLocation(client);
+        }
+        printOnce = false;
+        ///
+        
       metrics(client, size, now, state, "RUNNING");
+      
       now = System.currentTimeMillis();
       cycle = (now - startTime)/pollMs;
       wakeupTime = startTime + (pollMs * (cycle + 1));
@@ -157,7 +172,25 @@ public class LocalGlobalGroupTopology {
     } while (now < end);
   }
 
-  public boolean metrics(Nimbus.Client client, int size, long now, MetricsState state, String message) throws Exception {
+  private void printExecutorLocation(Client client) throws Exception {
+	  ClusterSummary summary = client.getClusterInfo();
+	  StringBuilder executorBuilder = new StringBuilder();
+	  
+	  for (TopologySummary ts: summary.get_topologies()) {
+	      String id = ts.get_id();
+	      TopologyInfo info = client.getTopologyInfo(id);
+	      
+	      executorBuilder.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	      for (ExecutorSummary es: info.get_executors()) {
+	    	  executorBuilder.append(es.get_executor_info().get_task_start() +"," + es.get_component_id() + "," + es.get_host() + "\n");
+	      }
+	      executorBuilder.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+	  }
+	  
+	  System.out.println(executorBuilder.toString());
+}
+
+public boolean metrics(Nimbus.Client client, int size, long now, MetricsState state, String message) throws Exception {
     ClusterSummary summary = client.getClusterInfo();
     long time = now - state.lastTime;
     state.lastTime = now;
@@ -184,16 +217,16 @@ public class LocalGlobalGroupTopology {
     for (TopologySummary ts: summary.get_topologies()) {
       String id = ts.get_id();
       TopologyInfo info = client.getTopologyInfo(id);
-
+      
       ////SOE Addition
       PerftestWriter.print(summary, info, new HashMap<String, Long>());
-
       ////
+      
       for (ExecutorSummary es: info.get_executors()) {
         ExecutorStats stats = es.get_stats();
         totalExecutors++;
         if (stats != null) {
-          Map<String,Map<String,Long>> transferred = stats.get_transferred();
+          Map<String,Map<String,Long>> transferred = stats.get_emitted();/* .get_transferred();*/
           if ( transferred != null) {
             Map<String, Long> e2 = transferred.get(":all-time");
             if (e2 != null) {
@@ -258,16 +291,16 @@ public class LocalGlobalGroupTopology {
             TopologyBuilder builder = new TopologyBuilder();
             
             builder.setSpout("messageSpoutLocal1", new SOLSpout(_messageSize, _ackEnabled), 4).addConfiguration("group-name", "Local1");
-            //builder.setBolt("messageBoltLocal1_1", new SOLBolt(), 4).shuffleGrouping("messageSpoutLocal1").addConfiguration("group-name", "Local1");
-            //builder.setBolt("messageBoltLocal1_LocalResult", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Local1");
-            builder.setBolt("messageBoltLocal1_1", new SOLBolt(), 4).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
-            builder.setBolt("messageBoltLocal1_LocalResult", new SOLFinalBolt(), 2).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+            builder.setBolt("messageBoltLocal1_1", new SOLBolt(), 4).shuffleGrouping("messageSpoutLocal1").addConfiguration("group-name", "Local1");
+            builder.setBolt("messageBoltLocal1_LocalResult", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Local1");
+//            builder.setBolt("messageBoltLocal1_1", new SOLBolt(), 4).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+//            builder.setBolt("messageBoltLocal1_LocalResult", new SOLFinalBolt(), 2).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
             
-            builder.setSpout("messageSpoutLocal2", new SOLSpout(_messageSize, _ackEnabled), 2).addConfiguration("group-name", "Local2");
-            //builder.setBolt("messageBoltLocal2_1", new SOLBolt(), 2).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
-            //builder.setBolt("messageBoltLocal2_LocalResult", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
-            builder.setBolt("messageBoltLocal2_1", new SOLBolt(), 2).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
-            builder.setBolt("messageBoltLocal2_LocalResult", new SOLFinalBolt(), 2).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+            builder.setSpout("messageSpoutLocal2", new SOLSpout(_messageSize, _ackEnabled), 4).addConfiguration("group-name", "Local2");
+            builder.setBolt("messageBoltLocal2_1", new SOLBolt(), 4).shuffleGrouping("messageSpoutLocal2").addConfiguration("group-name", "Local2");
+            builder.setBolt("messageBoltLocal2_LocalResult", new SOLFinalBolt(), 2).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Local2");
+//            builder.setBolt("messageBoltLocal2_1", new SOLBolt(), 4).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+//            builder.setBolt("messageBoltLocal2_LocalResult", new SOLFinalBolt(), 2).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
             
             builder.setBolt("messageBoltGlobal1_1A", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
             builder.setBolt("messageBoltGlobal1_1B", new SOLBolt(), 4).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");

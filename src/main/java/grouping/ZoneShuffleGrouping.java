@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.thrift7.TException;
 import org.mortbay.util.MultiMap;
@@ -21,6 +22,7 @@ public class ZoneShuffleGrouping implements CustomStreamGrouping {
 	MultiMap supervisorTaskMap = new MultiMap();
 	HashMap<Integer, String> taskSupNameMap = new HashMap<Integer,String>();
 	List<Integer> targetList;
+	Random rand = new Random();
 	
 	HashMap<Integer, List<Integer>> taskResultList = new HashMap<Integer, List<Integer>>();
 	
@@ -66,11 +68,15 @@ public class ZoneShuffleGrouping implements CustomStreamGrouping {
 	public List<Integer> chooseTasks(int taskId, List<Object> values) {		
 		//return setIntersections((List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(new Integer(taskId))));
 		List<Integer> result = taskResultList.get(new Integer(taskId));
+		List<Integer> singleResult = new ArrayList<Integer>(1);
 		
 		if (result == null || result.isEmpty())
 			result = targetList;
 		
-		return result;
+		int resultIdx = rand.nextInt(result.size());
+		singleResult.add(result.get(resultIdx));
+		
+		return singleResult;
 	}
 	
 	private List<Integer> findIntersections(List<Integer> choosenTasks, List<Integer> fromSupervisor)

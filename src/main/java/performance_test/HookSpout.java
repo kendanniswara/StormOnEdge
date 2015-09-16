@@ -29,6 +29,12 @@ public class HookSpout extends BaseTaskHook {
 	
 	long Ackcounter = 0;
 	
+	long timeStamp2;
+	long now2;
+	long counter2 = 0;
+	StringBuilder emitResultString;
+	long Emitcounter = 0;
+	
 	int port;
 	
 	@Override
@@ -43,13 +49,51 @@ public class HookSpout extends BaseTaskHook {
         }
         */
 		now = System.currentTimeMillis();
+		now2 = System.currentTimeMillis();
 		timeStamp = now;
+		timeStamp2 = now;
 		latencyCompleteTimeList = new ArrayList<Long>();
 		latencyResultString = new StringBuilder();
 		counterResultString = new StringBuilder();
+		emitResultString = new StringBuilder();
 		
 		port = context.getThisWorkerPort();
     }
+	
+	@Override
+	public void emit(EmitInfo info) {
+		
+		if (info.outTasks != null) {
+			Emitcounter++;
+        	
+        	timeStamp2 = System.currentTimeMillis();
+        	if(timeStamp2-now2 > cycle)
+        	{
+        		counter2++;
+        		long timeMod = timeStamp2 - (timeStamp2 % cycle);
+        		        	
+        		emitResultString.append(port + ","+ timeMod + ",Emitted," + Emitcounter + "\n");
+        		
+        		now2 = timeStamp2;
+        		Emitcounter = 0;
+        		
+        		if(counter2 >= printCycle)
+        		{
+        			try {
+        				FileWriter writer = new FileWriter("/home/kend/Spout-EmitCounter.csv", true);
+        				writer.write(emitResultString.toString());
+        				writer.close();
+        				
+        			}catch(Exception e){e.printStackTrace();}
+        			        			
+        			emitResultString.setLength(0);
+        			counter2 = 0;
+        		}
+        	}
+        }
+		
+		super.emit(info);
+	}
 	
 	@Override
     public void spoutAck(SpoutAckInfo info) {

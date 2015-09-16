@@ -83,17 +83,17 @@ public class SOLSpout extends BaseRichSpout {
     timeStamp = System.currentTimeMillis();
     //String fieldValue = String.valueOf(_rand.nextInt(10));
     
-    //if (_messageCount < 7000)
-    //{
+    if (_messageCount < 40000)
+    {
 	    if(_ackEnabled) {
 	      _collector.emit(new Values(message, nodeName, timeStamp), _messageCount);
 	    } else {
 	      _collector.emit(new Values(message, nodeName, timeStamp));
 	    }
 	    _messageCount++;
-    //}
+    }
     try {
-    	//Thread.sleep(1);
+    	Thread.sleep(2, 0);
     } catch(Exception e) { }
   }
 

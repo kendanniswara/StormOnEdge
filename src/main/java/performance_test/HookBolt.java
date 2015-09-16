@@ -24,10 +24,12 @@ public class HookBolt extends BaseTaskHook {
 	long timeStamp;
 	long cycle = 5000;
 	long counter = 0;
+	long counter2 = 0;
 	long printCycle = 4;
 	ArrayList<Long> latencyCompleteTimeList;
 	HashMap<String, Integer> streamSendingMap;
 	StringBuilder latencyResultString;
+	StringBuilder counterResultString;
 	
 	long Ackcounter = 0;
 	
@@ -51,6 +53,7 @@ public class HookBolt extends BaseTaskHook {
 		latencyCompleteTimeList = new ArrayList<Long>();
 		streamSendingMap = new HashMap<String, Integer>();
 		latencyResultString = new StringBuilder();
+		counterResultString = new StringBuilder();
 		
 		port = context.getThisWorkerPort();
 		taskID = context.getThisTaskId();
@@ -81,7 +84,7 @@ public class HookBolt extends BaseTaskHook {
         		if(counter >= printCycle)
         		{
         			try {
-        				FileWriter writer = new FileWriter("/home/kend/bolt-LatencyHook.csv", true);
+        				FileWriter writer = new FileWriter("/home/kend/Bolt-LatencyHook.csv", true);
         				writer.write(latencyResultString.toString());
         				writer.close();
         				
@@ -104,14 +107,14 @@ public class HookBolt extends BaseTaskHook {
 				value++;
 				streamSendingMap.put(tuple.getString(1), new Integer(value));
 			}
-			else			
+			else
 				streamSendingMap.put(tuple.getString(1), 1);			
 			
 			
 			timeStamp = System.currentTimeMillis();
         	if(timeStamp-now > cycle)
         	{
-        		counter++;
+        		counter2++;
         		long timeMod = timeStamp - (timeStamp % cycle);
         		
         		for(String key : streamSendingMap.keySet())
@@ -122,7 +125,7 @@ public class HookBolt extends BaseTaskHook {
         		now = timeStamp;
         		streamSendingMap.clear();
         		
-        		if(counter >= printCycle)
+        		if(counter2 >= printCycle)
         		{
         			try {
         				
@@ -132,11 +135,11 @@ public class HookBolt extends BaseTaskHook {
         			}catch(Exception e){ }
         			        			
         			counterResultString.setLength(0);        			
-        			counter = 0;
+        			counter2 = 0;
         		}
         	}
-		}
-		*/
+		}*/
+		
 		
 		super.boltExecute(info);
 	}

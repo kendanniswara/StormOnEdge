@@ -1,6 +1,7 @@
 package scheduler;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -38,107 +39,46 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	
 	Random rand = new Random(System.currentTimeMillis());
 	JSONParser parser = new JSONParser();
-	String sourceCloudTaskFile = "/home/kend/fromSICSCloud/Scheduler-SpoutCloudsPair.txt";
+	CloudLocator clocator;
+	Map config;
+	
+//	String sourceCloudTaskFile = "/home/kend/fromSICSCloud/Scheduler-SpoutCloudsPair.txt";
+//	String clocatorFile = "/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt";
+	
+	final String ackerBolt = "__acker";
+	final String CONF_sourceCloud = "geoScheduler.sourceCloudList";
+	final String CONF_cloudLocator = "geoScheduler.cloudInformation";
 	String ListofGroupFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
-	String clocatorFile = "/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt";
-	CloudLocator clocator = new CloudLocator(clocatorFile);
 	
-	LinkedHashMap<String, LocalTask> localGroupNameList;
-    LinkedHashMap<String, GlobalTask> globalGroupNameList;
-    
-    String ackerBolt = "__acker";
-	
-    public void prepare(Map conf) {}
+    public void prepare(Map conf) 
+    {
+    	//Collect data from storm.yaml config file 
+    	config = conf;
+    }
 
     @SuppressWarnings("unchecked")
 	public void schedule(Topologies topologies, Cluster cluster) {
-    
+    	
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
-	
+	    
 	    HashMap<String,String[]> spoutCloudsPair = new HashMap<String, String[]>();
-	    //Set<String> cloudNameSet = new LinkedHashSet<String>();
-	    localGroupNameList = new LinkedHashMap<String,LocalTask>();
-	    globalGroupNameList = new LinkedHashMap<String,GlobalTask>();
+	    LinkedHashMap<String, LocalTask> localGroupNameList = new LinkedHashMap<String,LocalTask>();
+	    LinkedHashMap<String, GlobalTask> globalGroupNameList = new LinkedHashMap<String,GlobalTask>();
 	    
 	    //Reading the information from file
-	    FileReader pairDataFile; 
-	    BufferedReader textReader;
-	    String line;
 	    try {
 		    
-	    	//---------------------------
-		    //get spout & cloud_list pair
-		    //---------------------------
-		    pairDataFile = new FileReader(sourceCloudTaskFile);
-		    textReader  = new BufferedReader(pairDataFile);
+	    	String sourceCloudTaskFile = config.get(CONF_sourceCloud).toString();
+	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
+	    	
+		    spoutLocationFileReader(sourceCloudTaskFile, spoutCloudsPair);
+		    taskGroupListFileReader(ListofGroupFile, localGroupNameList, globalGroupNameList);
 		    
-		    line = textReader.readLine();
-		    while(line != null && !line.equals(""))
-		    {
-		    	//Format
-		    	//SpoutID;cloudA,cloudB,cloudC
-		    	System.out.println("Read from file: " + line);
-		    	String[] pairString = line.split(";");
-		    	String[] cloudList = pairString[1].split(",");
-		    	spoutCloudsPair.put(pairString[0],cloudList);
-		    	
-		    	line = textReader.readLine();
-		    }
-		    
-		    textReader.close();
-		    
-		    //---------------
-		    //get cloud names
-		    //---------------
-		    /*
-		    pairDataFile = new FileReader("/home/kend/fromSICSCloud/Scheduler-CloudList.txt");
-		    textReader  = new BufferedReader(pairDataFile);
-		    
-		    line = textReader.readLine();
-		    while(line != null && !line.equals(""))
-		    {
-		    	//Format
-		    	//cloudName
-		    	System.out.println("Read from file: " + line);
-		    	cloudNameSet.add(line);
-		    	
-		    	line = textReader.readLine();
-		    }
-		    textReader.close();
-		    
-		    */
-		    //---------------
-		    //get group names
-		    //---------------
-		    pairDataFile = new FileReader(ListofGroupFile);
-		    textReader  = new BufferedReader(pairDataFile);
-		    
-		    line = textReader.readLine();
-		    while(line != null && !line.equals(""))
-		    {
-		    	//Format
-		    	//Global1;Global / Local1;Local
-		    	System.out.println("Read from file: " + line);
-		    	String[] pairString = line.split(";");
-		    	if(pairString[1].contains("Local"))
-		    		localGroupNameList.put(pairString[0],new LocalTask(pairString[0]));
-		    	else if(pairString[1].contains("Global"))
-		    		globalGroupNameList.put(pairString[0],new GlobalTask(pairString[0]));
-		    	/*
-		    	if(line.contains("Local"))
-		    		localGroupNameList.put(line,new TaskGroup(line));
-		    	else if(line.contains("Global"))
-		    		globalGroupNameList.put(line,new TaskGroup(line));
-		    	*/
-		    	line = textReader.readLine();
-		    }
-		    textReader.close();
-		    
-		    
-	    }catch(IOException e){
+	    }catch(Exception e){
 	    	System.out.println("Some exception happened when reading the file");
 	    	System.out.println(e.getMessage());
 	    	e.printStackTrace();
+	    	return;
 	    	}
 	    
 	    if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
@@ -146,7 +86,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("Reading is not complete, stop scheduling for now");
         	return;
         }
-    
 	    
 	    System.out.println("Start categorizing the supervisor");
 	    Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
@@ -175,6 +114,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("");
         }
         
+        String clocatorFile = config.get(CONF_cloudLocator).toString();
+        System.out.println("Path for clocatorFile : " + clocatorFile);
+        clocator = new CloudLocator(clocatorFile);
         
         
 		for (TopologyDetails topology : topologies.getTopologies()) {
@@ -509,6 +451,58 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	        // makes storm's scheduler composable.
 	        new EvenScheduler().schedule(topologies, cluster);
     }
+
+	private void spoutLocationFileReader(String sourceCloudTaskFile,
+			HashMap<String, String[]> spoutCloudsPair)
+			throws FileNotFoundException, IOException {
+		FileReader pairDataFile;
+		BufferedReader textReader;
+		String line;
+		pairDataFile = new FileReader(sourceCloudTaskFile);
+		textReader  = new BufferedReader(pairDataFile);
+		
+		line = textReader.readLine();
+		while(line != null && !line.equals(""))
+		{
+			//Format
+			//SpoutID;cloudA,cloudB,cloudC
+			System.out.println("Read from file: " + line);
+			String[] pairString = line.split(";");
+			String[] cloudList = pairString[1].split(",");
+			spoutCloudsPair.put(pairString[0],cloudList);
+			
+			line = textReader.readLine();
+		}
+		textReader.close();
+	}
+    
+	private void taskGroupListFileReader(
+			String taskGroupFile,
+			LinkedHashMap<String, LocalTask> localGroupNameList,
+			LinkedHashMap<String, GlobalTask> globalGroupNameList)
+			throws FileNotFoundException, IOException {
+		FileReader pairDataFile;
+		BufferedReader textReader;
+		String line;
+		pairDataFile = new FileReader(taskGroupFile);
+		textReader  = new BufferedReader(pairDataFile);
+		
+		line = textReader.readLine();
+		while(line != null && !line.equals(""))
+		{
+			//Format
+			//Global1;Global / Local1;Local
+			System.out.println("Read from file: " + line);
+			String[] pairString = line.split(";");
+			if(pairString[1].contains("Local"))
+				localGroupNameList.put(pairString[0],new LocalTask(pairString[0]));
+			else if(pairString[1].contains("Global"))
+				globalGroupNameList.put(pairString[0],new GlobalTask(pairString[0]));
+
+			line = textReader.readLine();
+		}
+		textReader.close();
+	}
 
 	private void deployExecutorToWorkers(List<WorkerSlot> cloudWorkers, List<ExecutorDetails> executors, MultiMap executorWorkerMap)
     {

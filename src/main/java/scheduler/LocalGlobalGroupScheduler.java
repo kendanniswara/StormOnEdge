@@ -136,10 +136,16 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 		    
 		    
 	    }catch(IOException e){
-	    	System.out.println("Some exception happened");
+	    	System.out.println("Some exception happened when reading the file");
 	    	System.out.println(e.getMessage());
 	    	e.printStackTrace();
 	    	}
+	    
+	    if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
+        {
+        	System.out.println("Reading is not complete, stop scheduling for now");
+        	return;
+        }
     
 	    
 	    System.out.println("Start categorizing the supervisor");
@@ -149,7 +155,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         MultiMap workersByCloudName = new MultiMap();
         MultiMap tasksByCloudName = new MultiMap();
 	    
-        //map the supervisors based on cloud names
+        //map the supervisors and workers based on cloud names
         for (SupervisorDetails supervisor : supervisors) {
         	Map<String, Object> metadata = (Map<String, Object>)supervisor.getSchedulerMeta();
         	if(metadata.get("cloud-name") != null){
@@ -169,11 +175,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("");
         }
         
-        if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
-        {
-        	System.out.println("Reading is not complete, stop scheduling for now");
-        	return;
-        }
+        
         
 		for (TopologyDetails topology : topologies.getTopologies()) {
 			
@@ -437,17 +439,23 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 		            		}
 						}
 						
+						
 						//Addition for ackers
-						List<ExecutorDetails> Ackers = new ArrayList<ExecutorDetails>();
-								Ackers.addAll(componentToExecutors.get(ackerBolt));
+						List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
+						ackers.addAll(componentToExecutors.get(ackerBolt));
 						List<WorkerSlot> workerAckers = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
 						
-						deployExecutorToWorkers(workerAckers, Ackers, executorWorkerMap);
+						if(!ackers.isEmpty())
+						{
+							deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
         				
-        				for(ExecutorDetails ex : Ackers)
-        	        			tasksByCloudName.add(choosenCloud, ex.getStartTask());
+							for(ExecutorDetails ex : ackers)
+								tasksByCloudName.add(choosenCloud, ex.getStartTask());
+						
+						}
 						//Finish addition for ackers
 					
+						
 					} catch(Exception e) {
 						System.out.println(e);
 						}

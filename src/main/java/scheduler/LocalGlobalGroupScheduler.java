@@ -40,20 +40,18 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	Random rand = new Random(System.currentTimeMillis());
 	JSONParser parser = new JSONParser();
 	CloudLocator clocator;
-	Map config;
-	
-//	String sourceCloudTaskFile = "/home/kend/fromSICSCloud/Scheduler-SpoutCloudsPair.txt";
-//	String clocatorFile = "/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt";
+	Map storm_config;
 	
 	final String ackerBolt = "__acker";
 	final String CONF_sourceCloud = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocator = "geoScheduler.cloudInformation";
+	
 	String ListofGroupFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
 	
     public void prepare(Map conf) 
     {
-    	//Collect data from storm.yaml config file 
-    	config = conf;
+    	//Retrieve data from storm.yaml config file 
+    	storm_config = conf;
     }
 
     @SuppressWarnings("unchecked")
@@ -68,15 +66,14 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    //Reading the information from file
 	    try {
 		    
-	    	String sourceCloudTaskFile = config.get(CONF_sourceCloud).toString();
+	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloud).toString();
 	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
 	    	
 		    spoutLocationFileReader(sourceCloudTaskFile, spoutCloudsPair);
 		    taskGroupListFileReader(ListofGroupFile, localGroupNameList, globalGroupNameList);
 		    
 	    }catch(Exception e){
-	    	System.out.println("Some exception happened when reading the file");
-	    	System.out.println(e.getMessage());
+	    	System.out.println("Some exception happened when reading the file : \n " + e.getMessage());
 	    	e.printStackTrace();
 	    	return;
 	    	}
@@ -98,7 +95,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         for (SupervisorDetails supervisor : supervisors) {
         	Map<String, Object> metadata = (Map<String, Object>)supervisor.getSchedulerMeta();
         	if(metadata.get("cloud-name") != null){
-        		//cloudNameSet.add(metadata.get("cloud-name").toString());
         		supervisorsByCloudName.add(metadata.get("cloud-name"), supervisor);
         		workersByCloudName.addValues(metadata.get("cloud-name"), cluster.getAvailableSlots(supervisor));
         	}
@@ -114,7 +110,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("");
         }
         
-        String clocatorFile = config.get(CONF_cloudLocator).toString();
+        String clocatorFile = storm_config.get(CONF_cloudLocator).toString();
         System.out.println("Path for clocatorFile : " + clocatorFile);
         clocator = new CloudLocator(clocatorFile);
         

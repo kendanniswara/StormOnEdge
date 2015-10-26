@@ -88,9 +88,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    System.out.println("Start categorizing the supervisor");
 	    Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
 	    
-	    //MultiMap supervisorsByCloudName = new MultiMap();
-        //MultiMap workersByCloudName = new MultiMap();
-        //MultiMap tasksByCloudName = new MultiMap();
 	    HashMap<String, Cloud> clouds = new HashMap<String, Cloud>();
         
         //map the supervisors and workers based on cloud names
@@ -109,8 +106,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         		c = clouds.get(metadata.get("cloud-name").toString());
         		c.addSupervisor(supervisor);
         		c.addWorkers(cluster.getAvailableSlots(supervisor));
-        		//supervisorsByCloudName.add(metadata.get("cloud-name"), supervisor);
-        		//workersByCloudName.addValues(metadata.get("cloud-name"), cluster.getAvailableSlots(supervisor));
         	}
         }
         
@@ -169,7 +164,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 								schedulergroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
 								for(String cloudName : spoutCloudsPair.get(name))
 								{
-									//schedulergroup.clouds.add(cloudName);
 									Cloud c = clouds.get(cloudName);
 									schedulergroup.taskGroupClouds.add(c);
 								}
@@ -247,98 +241,25 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						for(Map.Entry<String,Integer> spout : localGroup.spoutsWithParInfo.entrySet())
 						{
-							System.out.println("-" + spout.getKey() + ": " + spout.getValue());
-							List<ExecutorDetails> executors = componentToExecutors.get(spout.getKey());
-							
 							String spoutName = spout.getKey();
 							int spoutParHint = spout.getValue();
 							
-							if(executors == null || executors.isEmpty())
-			            		System.out.println(localGroup.name + ": " + spoutName + ": No executors");
-			            	else
-			            	{
-			            		int cloudIndex = 0;
-			            		int executorPerCloud = spoutParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
-			            		for(Cloud c : localGroup.taskGroupClouds)
-			            		{			            			
-			            			int startidx = cloudIndex * executorPerCloud;
-			            			int endidx = startidx + executorPerCloud;
-			            			
-			            			if (endidx > executors.size())
-			            				endidx = executors.size() - 1;
-			            			
-			            			List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
-			            			//List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
-			            			List<WorkerSlot> workers = c.getWorkers();
-			            			
-			            			System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
-			            			
-			            			if(workers == null || workers.isEmpty())
-			    	            		System.out.println(localGroup.name + ": " + c.name + ": No workers");
-			            			else
-			            			{
-			            				deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
-			            				executorCloudMap.add(spoutName, c.name);
-			            				
-			            				for(ExecutorDetails ex : subexecutors)
-			            				{
-		            	        			//tasksByCloudName.add(c.name, ex.getStartTask());
-		            	        			c.addTask(ex.getStartTask());
-			            				}
-			            			}
-			            			
-			            			cloudIndex++;
-			            		}
-			            	}
+							System.out.println("-" + spoutName + ": " + spoutParHint);
+							
+							List<ExecutorDetails> executors = componentToExecutors.get(spoutName);
+							localTaskDeployment(localGroup, executors, spoutName, spoutParHint, executorWorkerMap, executorCloudMap);
 						}
 						
 						for(Map.Entry<String,Integer> bolt : localGroup.boltsWithParInfo.entrySet())
 						{
-							System.out.println("-" + bolt.getKey() + ": " + bolt.getValue());
-							List<ExecutorDetails> executors = componentToExecutors.get(bolt.getKey());
-							
 							String boltName = bolt.getKey();
 							int parHint = bolt.getValue();
 							
-							if(executors == null || executors.isEmpty())
-			            	{
-			            		System.out.println(localGroup.name + ": " + boltName + ": No executors");
-			            	}
-			            	else
-			            	{
-			            		int cloudIndex = 0;
-			            		int executorPerCloud = parHint / localGroup.taskGroupClouds.size(); //to be safe, only work on even number between executors to workers
-			            		for(Cloud c : localGroup.taskGroupClouds)
-			            		{			            			
-			            			int startidx = cloudIndex * executorPerCloud;
-			            			int endidx = startidx + executorPerCloud;
-			            			
-			            			if (endidx > executors.size())
-			            				endidx = executors.size() - 1;
-			            			
-			            			List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
-			            			//List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
-			            			List<WorkerSlot> workers = c.getWorkers();
-			            			
-			            			System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
-			            			
-			            			if(workers == null || workers.isEmpty())
-			    	            		System.out.println(localGroup.name + ": " + c.name + ": No workers");
-			            			else
-			            			{
-			            				deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
-			            				executorCloudMap.add(boltName, c.name);
-			            				
-			            				for(ExecutorDetails ex : subexecutors)
-			            				{
-		            	        			//tasksByCloudName.add(c.name, ex.getStartTask());
-		            	        			c.addTask(ex.getStartTask());
-			            				}
-			            			}
-			            			
-			            			cloudIndex++;
-			            		}
-			            	}
+							System.out.println("-" + boltName + ": " + parHint);
+							
+							List<ExecutorDetails> executors = componentToExecutors.get(boltName);
+							localTaskDeployment(localGroup, executors, boltName, parHint, executorWorkerMap, executorCloudMap);
+							
 						}
 					} catch(Exception e) 
 						{System.out.println(e);}
@@ -391,7 +312,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 								
 								//get only one cloud in this GlobalTask
 								List<WorkerSlot> workersInCloud = c.getWorkers();
-								//List<WorkerSlot> workersInCloud = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
 								
 								System.out.println("-----subexecutors:" + executors);
 		            			System.out.println("-----workers:" + workersInCloud);
@@ -405,8 +325,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 		            				executorCloudMap.add(bolt, choosenCloud);
 		            				
 		            				for(ExecutorDetails ex : executors)
-		            						c.addTask(ex.getStartTask());
-		            	        			//tasksByCloudName.add(choosenCloud, ex.getStartTask());	            				
+		            						c.addTask(ex.getStartTask());        				
 			            		}
 							}
 							
@@ -476,6 +395,47 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	        // makes storm's scheduler composable.
 	        new EvenScheduler().schedule(topologies, cluster);
     }
+
+	private void localTaskDeployment(LocalTaskGroup localGroup,
+			List<ExecutorDetails> executors, String taskName, int taskParHint, 
+			MultiMap executorWorkerMap, MultiMap executorCloudMap) 
+	{
+		if(executors == null || executors.isEmpty())
+			System.out.println(localGroup.name + ": " + taskName + ": No executors");
+		else
+		{
+			int cloudIndex = 0;
+			int executorPerCloud = taskParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
+			for(Cloud c : localGroup.taskGroupClouds)
+			{			            			
+				int startidx = cloudIndex * executorPerCloud;
+				int endidx = startidx + executorPerCloud;
+				
+				if (endidx > executors.size())
+					endidx = executors.size() - 1;
+				
+				List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
+				List<WorkerSlot> workers = c.getWorkers();
+				
+				System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
+				
+				if(workers == null || workers.isEmpty())
+		    		System.out.println(localGroup.name + ": " + c.name + ": No workers");
+				else
+				{
+					deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
+					executorCloudMap.add(taskName, c.name);
+					
+					for(ExecutorDetails ex : subexecutors)
+					{
+		    			c.addTask(ex.getStartTask());
+					}
+				}
+				
+				cloudIndex++;
+			}
+		}
+	}
 
 	private void spoutLocationFileReader(String sourceCloudTaskFile,
 			HashMap<String, String[]> spoutCloudsPair)

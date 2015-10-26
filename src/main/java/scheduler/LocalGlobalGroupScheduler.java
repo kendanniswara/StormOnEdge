@@ -43,8 +43,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	Map storm_config;
 	
 	final String ackerBolt = "__acker";
-	final String CONF_sourceCloud = "geoScheduler.sourceCloudList";
-	final String CONF_cloudLocator = "geoScheduler.cloudInformation";
+	final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
+	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	
 	String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
 	String schedulerResultFile = "/home/kend/SchedulerResult.csv";
@@ -68,7 +68,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    try {
 	    	
 	    	//Reading the information from file
-	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloud).toString();
+	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloudKey).toString();
 	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
 	    	
 		    spoutLocationFileReader(sourceCloudTaskFile, spoutCloudsPair);
@@ -112,7 +112,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         	System.out.println("");
         }
         
-        String clocatorFile = storm_config.get(CONF_cloudLocator).toString();
+        String clocatorFile = storm_config.get(CONF_cloudLocatorKey).toString();
         System.out.println("Path for clocatorFile : " + clocatorFile);
         clocator = new CloudLocator(clocatorFile);
         

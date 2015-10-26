@@ -46,9 +46,14 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	
+	final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
+	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
+	
 	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
-	String schedulerResultFile = "/home/kend/SchedulerResult.csv";
-	String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
+	//String schedulerResultFile = "/home/kend/SchedulerResult.csv";
+	//String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
+	
+	
 	
     public void prepare(Map conf) 
     {
@@ -235,7 +240,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//get clouds 
 				for(LocalTaskGroup localGroup : localTaskList.values())
 				{
-					try 
+					try
 					{
 						System.out.println("LOG: " + localGroup.name + "distribution");
 						
@@ -243,24 +248,23 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						{
 							String spoutName = spout.getKey();
 							int spoutParHint = spout.getValue();
-							
 							System.out.println("-" + spoutName + ": " + spoutParHint);
 							
 							List<ExecutorDetails> executors = componentToExecutors.get(spoutName);
-							localTaskDeployment(localGroup, executors, spoutName, spoutParHint, executorWorkerMap, executorCloudMap);
+							localTaskGroupDeployment(localGroup, executors, spout, executorWorkerMap, executorCloudMap);
 						}
+						
 						
 						for(Map.Entry<String,Integer> bolt : localGroup.boltsWithParInfo.entrySet())
 						{
 							String boltName = bolt.getKey();
 							int parHint = bolt.getValue();
-							
 							System.out.println("-" + boltName + ": " + parHint);
 							
 							List<ExecutorDetails> executors = componentToExecutors.get(boltName);
-							localTaskDeployment(localGroup, executors, boltName, parHint, executorWorkerMap, executorCloudMap);
-							
+							localTaskGroupDeployment(localGroup, executors, bolt, executorWorkerMap, executorCloudMap);
 						}
+						
 					} catch(Exception e) 
 						{System.out.println(e);}
 				}
@@ -376,7 +380,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 					schedulerResultStringBuilder.append(Group.name + ": " + Group.taskGroupClouds + "\n");
 				
 				try {
-					FileWriter writer = new FileWriter(schedulerResultFile, true);
+					FileWriter writer = new FileWriter(storm_config.get(CONF_schedulerResult).toString(), true);
 					writer.write(schedulerResultStringBuilder.toString());
 					writer.close();
 				}catch(Exception e){ }
@@ -384,7 +388,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Create a file pair of CloudName and tasks assigned to this cloud
 				//This file is needed for zoneGrouping
 				try {
-					printTaskCloudPairs(clouds,pairSupervisorTaskFile);
+					printTaskCloudPairs(clouds,storm_config.get(CONF_ZoneGroupingInput).toString());
 				} catch(IOException e)
 					{ System.out.println(e.getMessage()); }
 	        }
@@ -396,10 +400,13 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	        new EvenScheduler().schedule(topologies, cluster);
     }
 
-	private void localTaskDeployment(LocalTaskGroup localGroup,
-			List<ExecutorDetails> executors, String taskName, int taskParHint, 
+	private void localTaskGroupDeployment(LocalTaskGroup localGroup,
+			List<ExecutorDetails> executors, Map.Entry<String,Integer> task, 
 			MultiMap executorWorkerMap, MultiMap executorCloudMap) 
 	{
+		String taskName = task.getKey(); 
+		int taskParHint = task.getValue();
+		
 		if(executors == null || executors.isEmpty())
 			System.out.println(localGroup.name + ": " + taskName + ": No executors");
 		else

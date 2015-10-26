@@ -130,10 +130,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				StormTopology st = topology.getTopology();
 				Map<String, Bolt> bolts = st.get_bolts();
 				Map<String, SpoutSpec> spouts = st.get_spouts();
-				
-				Map<String, List<ExecutorDetails>> componentToExecutors = cluster.getNeedsSchedulingComponentToExecutors(topology);
-				String needScheduling = "needs scheduling(component->executor): " + componentToExecutors;
-				System.out.println(needScheduling);
 
 				System.out.println("LOG: Categorizing Spouts into TaskGroup");
 				for(String name : spouts.keySet()){
@@ -150,6 +146,13 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							//Spout only reside in LocalTask
 							if(localTaskList.containsKey(groupName))
 								schedulergroup = localTaskList.get(groupName);
+							else
+							{
+								//Create new LocalTaskGroup
+								LocalTask newTaskGroup =  new LocalTask(groupName);
+								localTaskList.put(groupName,newTaskGroup);
+								schedulergroup = newTaskGroup;
+							}
 							
 							if(schedulergroup != null)
 							{
@@ -181,25 +184,18 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							TaskGroup schedulergroup = null;
 							
 							//each task only reside in one group
+							//Check list of localTask first, then globalTask
 							if(localTaskList.containsKey(groupName))
 								schedulergroup = localTaskList.get(groupName);
 							else if(globalTaskList.containsKey(groupName))
 								schedulergroup = globalTaskList.get(groupName);
-							/*else
+							else
 							{
-								SchedulerGroup newGroup = new SchedulerGroup(groupName);
-								//create new SchedulerGroup
-								if(groupName.contains("Local"))
-								{
-									localGroupNameList.put(groupName, newGroup);
-									schedulergroup = newGroup;
-								}
-								else if (groupName.contains("Global"))
-								{
-									globalGroupNameList.put(groupName, newGroup);
-									schedulergroup = newGroup;
-								}
-							}*/
+								//Create new GlobalTaskGroup
+								GlobalTask newTaskGroup =  new GlobalTask(groupName);
+								globalTaskList.put(groupName,newTaskGroup);
+								schedulergroup = newTaskGroup;
+							}
 							
 							if(schedulergroup != null)
 							{
@@ -213,13 +209,18 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							}
 							else
 							{
-								System.out.println("ERROR: " + name + " don't have any valid group. This task will be ignored in scheduling");
+								System.out.println("ERROR: " + name + " don't have any valid TaskGroup. This task will be ignored in scheduling");
 							}
 						}
 						
 					}catch(ParseException e){e.printStackTrace();}
 				}
 				
+				
+				
+				Map<String, List<ExecutorDetails>> componentToExecutors = cluster.getNeedsSchedulingComponentToExecutors(topology);
+				String needScheduling = "needs scheduling(component->executor): " + componentToExecutors;
+				System.out.println(needScheduling);
 
 				//Local group task distribution
 				//for each spouts:

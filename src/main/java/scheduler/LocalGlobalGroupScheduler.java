@@ -46,7 +46,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	
-	String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
+	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
 	String schedulerResultFile = "/home/kend/SchedulerResult.csv";
 	String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
 	
@@ -62,8 +62,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 	    
 	    HashMap<String,String[]> spoutCloudsPair = new HashMap<String, String[]>();
-	    LinkedHashMap<String, LocalTask> localTaskList = new LinkedHashMap<String,LocalTask>();
-	    LinkedHashMap<String, GlobalTask> globalTaskList = new LinkedHashMap<String,GlobalTask>();
+	    LinkedHashMap<String, LocalTaskGroup> localTaskList = new LinkedHashMap<String,LocalTaskGroup>();
+	    LinkedHashMap<String, GlobalTaskGroup> globalTaskList = new LinkedHashMap<String,GlobalTaskGroup>();
 	    
 	    try {
 	    	//Reading the information from file
@@ -151,7 +151,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
-							LocalTask schedulergroup = null;
+							LocalTaskGroup schedulergroup = null;
 							
 							//Spout only reside in LocalTask
 							if(localTaskList.containsKey(groupName))
@@ -159,7 +159,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							else
 							{
 								//Create new LocalTaskGroup
-								LocalTask newTaskGroup =  new LocalTask(groupName);
+								LocalTaskGroup newTaskGroup =  new LocalTaskGroup(groupName);
 								localTaskList.put(groupName,newTaskGroup);
 								schedulergroup = newTaskGroup;
 							}
@@ -171,7 +171,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 								{
 									//schedulergroup.clouds.add(cloudName);
 									Cloud c = clouds.get(cloudName);
-									schedulergroup.clouds2.add(c);
+									schedulergroup.taskGroupClouds.add(c);
 								}
 									
 							}
@@ -207,7 +207,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							else
 							{
 								//Create new GlobalTaskGroup
-								GlobalTask newTaskGroup =  new GlobalTask(groupName);
+								GlobalTaskGroup newTaskGroup =  new GlobalTaskGroup(groupName);
 								globalTaskList.put(groupName,newTaskGroup);
 								schedulergroup = newTaskGroup;
 							}
@@ -239,7 +239,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Local group task distribution
 				//for each spouts:
 				//get clouds 
-				for(LocalTask localGroup : localTaskList.values())
+				for(LocalTaskGroup localGroup : localTaskList.values())
 				{
 					try 
 					{
@@ -258,8 +258,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            	else
 			            	{
 			            		int cloudIndex = 0;
-			            		int executorPerCloud = spoutParHint / localGroup.clouds2.size(); //for now, only work on even number between executors to workers
-			            		for(Cloud c : localGroup.clouds2)
+			            		int executorPerCloud = spoutParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
+			            		for(Cloud c : localGroup.taskGroupClouds)
 			            		{			            			
 			            			int startidx = cloudIndex * executorPerCloud;
 			            			int endidx = startidx + executorPerCloud;
@@ -307,8 +307,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            	else
 			            	{
 			            		int cloudIndex = 0;
-			            		int executorPerCloud = parHint / localGroup.clouds2.size(); //to be safe, only work on even number between executors to workers
-			            		for(Cloud c : localGroup.clouds2)
+			            		int executorPerCloud = parHint / localGroup.taskGroupClouds.size(); //to be safe, only work on even number between executors to workers
+			            		for(Cloud c : localGroup.taskGroupClouds)
 			            		{			            			
 			            			int startidx = cloudIndex * executorPerCloud;
 			            			int endidx = startidx + executorPerCloud;
@@ -381,7 +381,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						else
 						{
 							c = clouds.get(choosenCloud);
-							globalTask.clouds2.add(c);
+							globalTask.taskGroupClouds.add(c);
 							
 							for(String bolt : globalTask.boltsWithParInfo.keySet())
 							{
@@ -452,9 +452,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	            schedulerResultStringBuilder.append("-----------------------------------\n\n");
 	            
 				for(TaskGroup Group : localTaskList.values())
-					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds2 + "\n");
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.taskGroupClouds + "\n");
 				for(TaskGroup Group : globalTaskList.values())
-					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds2 + "\n");
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.taskGroupClouds + "\n");
 				
 				try {
 					FileWriter writer = new FileWriter(schedulerResultFile, true);
@@ -503,8 +503,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     
 	private void taskGroupListFileReader(
 			String taskGroupFile,
-			LinkedHashMap<String, LocalTask> localGroupNameList,
-			LinkedHashMap<String, GlobalTask> globalGroupNameList)
+			LinkedHashMap<String, LocalTaskGroup> localGroupNameList,
+			LinkedHashMap<String, GlobalTaskGroup> globalGroupNameList)
 			throws FileNotFoundException, IOException {
 		FileReader pairDataFile;
 		BufferedReader textReader;
@@ -520,9 +520,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			System.out.println("Read from file: " + line);
 			String[] pairString = line.split(";");
 			if(pairString[1].contains("Local"))
-				localGroupNameList.put(pairString[0],new LocalTask(pairString[0]));
+				localGroupNameList.put(pairString[0],new LocalTaskGroup(pairString[0]));
 			else if(pairString[1].contains("Global"))
-				globalGroupNameList.put(pairString[0],new GlobalTask(pairString[0]));
+				globalGroupNameList.put(pairString[0],new GlobalTaskGroup(pairString[0]));
 
 			line = textReader.readLine();
 		}
@@ -597,21 +597,21 @@ class TaskGroup {
 	
 	public String name;
 	//public List<String> clouds = new ArrayList<String>();
-	public List<Cloud> clouds2 = new ArrayList<Cloud>();
+	public List<Cloud> taskGroupClouds = new ArrayList<Cloud>();
 	public LinkedHashMap<String,Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
 	public Set<String> boltDependencies = new HashSet<String>();
 }
 
-class LocalTask extends TaskGroup {
-	public LocalTask(String Groupname) {
+class LocalTaskGroup extends TaskGroup {
+	public LocalTaskGroup(String Groupname) {
 		super(Groupname);
 	}
 	
 	public LinkedHashMap<String,Integer> spoutsWithParInfo = new LinkedHashMap<String, Integer>();
 }
 
-class GlobalTask extends TaskGroup {
-	public GlobalTask(String Groupname) {
+class GlobalTaskGroup extends TaskGroup {
+	public GlobalTaskGroup(String Groupname) {
 		super(Groupname);
 	}
 	

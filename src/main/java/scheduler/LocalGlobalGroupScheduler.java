@@ -46,7 +46,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	final String CONF_sourceCloud = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocator = "geoScheduler.cloudInformation";
 	
-	String ListofGroupFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
+	String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
+	String schedulerResultFile = "/home/kend/SchedulerResult.csv";
+	String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
 	
     public void prepare(Map conf) 
     {
@@ -60,17 +62,17 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 	    
 	    HashMap<String,String[]> spoutCloudsPair = new HashMap<String, String[]>();
-	    LinkedHashMap<String, LocalTask> localGroupNameList = new LinkedHashMap<String,LocalTask>();
-	    LinkedHashMap<String, GlobalTask> globalGroupNameList = new LinkedHashMap<String,GlobalTask>();
+	    LinkedHashMap<String, LocalTask> localTaskList = new LinkedHashMap<String,LocalTask>();
+	    LinkedHashMap<String, GlobalTask> globalTaskList = new LinkedHashMap<String,GlobalTask>();
 	    
-	    //Reading the information from file
 	    try {
-		    
+	    	
+	    	//Reading the information from file
 	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloud).toString();
 	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
 	    	
 		    spoutLocationFileReader(sourceCloudTaskFile, spoutCloudsPair);
-		    taskGroupListFileReader(ListofGroupFile, localGroupNameList, globalGroupNameList);
+		    taskGroupListFileReader(taskGroupListFile, localTaskList, globalTaskList);
 		    
 	    }catch(Exception e){
 	    	System.out.println("Some exception happened when reading the file : \n " + e.getMessage());
@@ -135,28 +137,25 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 
 				System.out.println("LOG: Categorizing Spouts into TaskGroup");
 				for(String name : spouts.keySet()){
-                    SpoutSpec s = spouts.get(name);
+                    
+					SpoutSpec spoutSpec = spouts.get(name);
                     
 					try {
-						JSONObject conf = (JSONObject)parser.parse(s.get_common().get_json_conf());
+						JSONObject conf = (JSONObject)parser.parse(spoutSpec.get_common().get_json_conf());
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
 							LocalTask schedulergroup = null;
 							
 							//Spout only reside in LocalTask
-							if(localGroupNameList.containsKey(groupName))
-								schedulergroup = localGroupNameList.get(groupName);
-							//else if(globalGroupNameList.containsKey(groupName))
-							//	schedulergroup = globalGroupNameList.get(groupName);
+							if(localTaskList.containsKey(groupName))
+								schedulergroup = localTaskList.get(groupName);
 							
 							if(schedulergroup != null)
 							{
-								schedulergroup.spoutsWithParInfo.put(name, s.get_common().get_parallelism_hint());
+								schedulergroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
 								for(String cloudName : spoutCloudsPair.get(name))
-								{
 									schedulergroup.clouds.add(cloudName);
-								}
 							}
 							else
 							{
@@ -182,10 +181,10 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							TaskGroup schedulergroup = null;
 							
 							//each task only reside in one group
-							if(localGroupNameList.containsKey(groupName))
-								schedulergroup = localGroupNameList.get(groupName);
-							else if(globalGroupNameList.containsKey(groupName))
-								schedulergroup = globalGroupNameList.get(groupName);
+							if(localTaskList.containsKey(groupName))
+								schedulergroup = localTaskList.get(groupName);
+							else if(globalTaskList.containsKey(groupName))
+								schedulergroup = globalTaskList.get(groupName);
 							/*else
 							{
 								SchedulerGroup newGroup = new SchedulerGroup(groupName);
@@ -225,7 +224,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Local group task distribution
 				//for each spouts:
 				//get clouds 
-				for(LocalTask localGroup : localGroupNameList.values())
+				for(LocalTask localGroup : localTaskList.values())
 				{
 					try {
 					
@@ -325,7 +324,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				
 				
 				//Global group task distribution
-				for(TaskGroup globalTask : globalGroupNameList.values())
+				for(TaskGroup globalTask : globalTaskList.values())
 				{
 					try {
 						System.out.println("LOG: " + globalTask.name + " distribution");
@@ -344,7 +343,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						System.out.println("-cloudDependencies: " + cloudDependencies);
 						clocator.update(clocatorFile);
 						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
-						//String choosenCloud = "CloudMidA";
+						//String choosenCloud = "CloudMidA"; //hardcoded
 						
 						globalTask.clouds.add(choosenCloud);
 						
@@ -379,6 +378,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						
 						//Addition for ackers
+						//put all of the ack-bolts to the GlobalTask Cloud
 						List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
 						ackers.addAll(componentToExecutors.get(ackerBolt));
 						List<WorkerSlot> workerAckers = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
@@ -400,8 +400,11 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				}
 
 	            //Assign the tasks into cluster
-	            StringBuilder workerStringBuilder = new StringBuilder();
-	            workerStringBuilder.append(needScheduling + "\n");
+	            StringBuilder schedulerResultStringBuilder = new StringBuilder();
+	            schedulerResultStringBuilder.append("-----------------------------------\n");
+	            schedulerResultStringBuilder.append("Task number to worker location\n");
+	            schedulerResultStringBuilder.append("-----------------------------------\n\n");
+	            schedulerResultStringBuilder.append(needScheduling + "\n");
 	            for(Object ws : executorWorkerMap.keySet())
 	        	{
 	            	List<ExecutorDetails> edetails = (List<ExecutorDetails>) executorWorkerMap.getValues(ws);
@@ -409,37 +412,30 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	            	
 	        		cluster.assign(wslot, topology.getId(), edetails);
 	        		System.out.println("We assigned executors:" + executorWorkerMap.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]");
-	        		workerStringBuilder.append(executorWorkerMap.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]\n");
-	        		
-	        		
+	        		schedulerResultStringBuilder.append(executorWorkerMap.getValues(ws) + " to slot: [" + wslot.getNodeId() + ", " + wslot.getPort() + "]\n");
 	        	}
 	            
-	            try {
-					FileWriter writer = new FileWriter("/home/kend/SchedulerResult.csv", true);
-					writer.write(workerStringBuilder.toString());
+	            //Printing the TaskGroup and their cloud location
+	            schedulerResultStringBuilder.append("\n\n-----------------------------------\n");
+	            schedulerResultStringBuilder.append("TaskGroup and Cloud locations\n");
+	            schedulerResultStringBuilder.append("-----------------------------------\n\n");
+	            
+				for(TaskGroup Group : localTaskList.values())
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
+				for(TaskGroup Group : globalTaskList.values())
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
+				
+				try {
+					FileWriter writer = new FileWriter(schedulerResultFile, true);
+					writer.write(schedulerResultStringBuilder.toString());
 					writer.close();
 				}catch(Exception e){ }
-	            
-	            printTaskCloudPairs(tasksByCloudName);
+				
+				//Create a file pair of CloudName and tasks assigned to this cloud
+				//This file is needed for zoneGrouping
+				//format: 
+				printTaskCloudPairs(tasksByCloudName,pairSupervisorTaskFile);
 	        }
-			
-			
-			//Printing the TaskGroup and their cloud location
-			StringBuilder taskCloudStringBuilder = new StringBuilder();
-			for(TaskGroup Group : localGroupNameList.values())
-			{
-				taskCloudStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
-			}
-			for(TaskGroup Group : globalGroupNameList.values())
-			{
-				taskCloudStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
-			}
-			
-			try {
-				FileWriter writer = new FileWriter("/home/kend/TasktoCloudLocation.csv", true);
-				writer.write(taskCloudStringBuilder.toString());
-				writer.close();
-			}catch(Exception e){ }
 	    }
 	        
 	        // let system's even scheduler handle the rest scheduling work
@@ -505,7 +501,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	Iterator<WorkerSlot> workerIterator = cloudWorkers.iterator();
     	Iterator<ExecutorDetails> executorIterator = executors.iterator();
 
-    	//if executors > workers, do simple round robin
+    	//if executors >= workers, do simple round robin
     	//for all executors A to all supervisors B
     	if(executors.size() >= cloudWorkers.size())
     	{
@@ -534,10 +530,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	}
     }
 
-	//create a file pair of CloudName and tasks assigned to this cloud
-	//This file is needed for intra-cloud grouping
 	@SuppressWarnings("unchecked")
-	private void printTaskCloudPairs(MultiMap tasksByCloudName)
+	private void printTaskCloudPairs(MultiMap tasksByCloudName, String fileLocation)
 	{
 		System.out.println("tasksByCloudName: " + tasksByCloudName.size());
 		
@@ -559,7 +553,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
          
         try 
         {
-			FileWriter writer = new FileWriter("/home/kend/fromSICSCloud/PairSupervisorTasks.txt", true);
+			FileWriter writer = new FileWriter(fileLocation, true);
 			writer.write(taskStringBuilder.toString());
 			writer.close();
 		} catch(Exception e){ }

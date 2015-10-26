@@ -66,7 +66,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    LinkedHashMap<String, GlobalTask> globalTaskList = new LinkedHashMap<String,GlobalTask>();
 	    
 	    try {
-	    	
 	    	//Reading the information from file
 	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloudKey).toString();
 	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
@@ -89,25 +88,29 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    System.out.println("Start categorizing the supervisor");
 	    Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
 	    
-	    MultiMap supervisorsByCloudName = new MultiMap();
-        MultiMap workersByCloudName = new MultiMap();
-        MultiMap tasksByCloudName = new MultiMap();
+	    //MultiMap supervisorsByCloudName = new MultiMap();
+        //MultiMap workersByCloudName = new MultiMap();
+        //MultiMap tasksByCloudName = new MultiMap();
 	    HashMap<String, Cloud> clouds = new HashMap<String, Cloud>();
         
         //map the supervisors and workers based on cloud names
-        for (SupervisorDetails supervisor : supervisors) {
+        for (SupervisorDetails supervisor : supervisors) 
+        {
         	Map<String, Object> metadata = (Map<String, Object>)supervisor.getSchedulerMeta();
         	if(metadata.get("cloud-name") != null){
         		Cloud c;
-        		if(clouds.containsKey(metadata.get("cloud-name")))
-        			c = clouds.get(metadata.get("cloud-name").toString());
-        		else
-        			c = new Cloud(metadata.get("cloud-name").toString());
         		
+        		if(!clouds.containsKey(metadata.get("cloud-name")))
+        		{
+        			clouds.put(metadata.get("cloud-name").toString(), new Cloud(metadata.get("cloud-name").toString()));
+        			System.out.println("[Cloud] Create new cloud called " + metadata.get("cloud-name").toString());
+        		}
+        		
+        		c = clouds.get(metadata.get("cloud-name").toString());
         		c.addSupervisor(supervisor);
         		c.addWorkers(cluster.getAvailableSlots(supervisor));
-        		supervisorsByCloudName.add(metadata.get("cloud-name"), supervisor);
-        		workersByCloudName.addValues(metadata.get("cloud-name"), cluster.getAvailableSlots(supervisor));
+        		//supervisorsByCloudName.add(metadata.get("cloud-name"), supervisor);
+        		//workersByCloudName.addValues(metadata.get("cloud-name"), cluster.getAvailableSlots(supervisor));
         	}
         }
         
@@ -123,7 +126,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         String clocatorFile = storm_config.get(CONF_cloudLocatorKey).toString();
         System.out.println("Path for clocatorFile : " + clocatorFile);
         clocator = new CloudLocator(clocatorFile);
-        
         
 		for (TopologyDetails topology : topologies.getTopologies()) {
 			
@@ -166,7 +168,12 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							{
 								schedulergroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
 								for(String cloudName : spoutCloudsPair.get(name))
-									schedulergroup.clouds.add(cloudName);
+								{
+									//schedulergroup.clouds.add(cloudName);
+									Cloud c = clouds.get(cloudName);
+									schedulergroup.clouds2.add(c);
+								}
+									
 							}
 							else
 							{
@@ -251,8 +258,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            	else
 			            	{
 			            		int cloudIndex = 0;
-			            		int executorPerCloud = spoutParHint / localGroup.clouds.size(); //for now, only work on even number between executors to workers
-			            		for(String cloudName : localGroup.clouds)
+			            		int executorPerCloud = spoutParHint / localGroup.clouds2.size(); //for now, only work on even number between executors to workers
+			            		for(Cloud c : localGroup.clouds2)
 			            		{			            			
 			            			int startidx = cloudIndex * executorPerCloud;
 			            			int endidx = startidx + executorPerCloud;
@@ -261,19 +268,23 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            				endidx = executors.size() - 1;
 			            			
 			            			List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
-			            			List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
+			            			//List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
+			            			List<WorkerSlot> workers = c.getWorkers();
 			            			
-			            			System.out.println("---" + cloudName + "\n" + "-----subexecutors:" + subexecutors);
+			            			System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
 			            			
 			            			if(workers == null || workers.isEmpty())
-			    	            		System.out.println(localGroup.name + ": " + cloudName + ": No workers");
+			    	            		System.out.println(localGroup.name + ": " + c.name + ": No workers");
 			            			else
 			            			{
 			            				deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
-			            				executorCloudMap.add(spoutName, cloudName);
+			            				executorCloudMap.add(spoutName, c.name);
 			            				
 			            				for(ExecutorDetails ex : subexecutors)
-		            	        			tasksByCloudName.add(cloudName, ex.getStartTask());
+			            				{
+		            	        			//tasksByCloudName.add(c.name, ex.getStartTask());
+		            	        			c.addTask(ex.getStartTask());
+			            				}
 			            			}
 			            			
 			            			cloudIndex++;
@@ -281,42 +292,48 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			            	}
 						}
 						
-						for(String bolt : localGroup.boltsWithParInfo.keySet())
+						for(Map.Entry<String,Integer> bolt : localGroup.boltsWithParInfo.entrySet())
 						{
-							System.out.println("-" + bolt);
-							List<ExecutorDetails> executors = componentToExecutors.get(bolt);
-							int parHint = localGroup.boltsWithParInfo.get(bolt);
+							System.out.println("-" + bolt.getKey() + ": " + bolt.getValue());
+							List<ExecutorDetails> executors = componentToExecutors.get(bolt.getKey());
+							
+							String boltName = bolt.getKey();
+							int parHint = bolt.getValue();
 							
 							if(executors == null || executors.isEmpty())
 			            	{
-			            		System.out.println(localGroup.name + ": " + bolt + ": No executors");
+			            		System.out.println(localGroup.name + ": " + boltName + ": No executors");
 			            	}
 			            	else
 			            	{
 			            		int cloudIndex = 0;
-			            		int exPerCloud = parHint / localGroup.clouds.size(); //to be safe, only work on even number between executors to workers
-			            		for(String cloudName : localGroup.clouds)
-			            		{
-			            			int startidx = cloudIndex * exPerCloud;
-			            			int endidx = startidx + exPerCloud;
+			            		int executorPerCloud = parHint / localGroup.clouds2.size(); //to be safe, only work on even number between executors to workers
+			            		for(Cloud c : localGroup.clouds2)
+			            		{			            			
+			            			int startidx = cloudIndex * executorPerCloud;
+			            			int endidx = startidx + executorPerCloud;
 			            			
 			            			if (endidx > executors.size())
 			            				endidx = executors.size() - 1;
 			            			
 			            			List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
-			            			List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
+			            			//List<WorkerSlot> workers = (List<WorkerSlot>) workersByCloudName.get(cloudName);
+			            			List<WorkerSlot> workers = c.getWorkers();
 			            			
-			            			System.out.println("---" + cloudName + "\n" + "-----subexecutors:" + subexecutors);
+			            			System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
 			            			
 			            			if(workers == null || workers.isEmpty())
-			    	            		System.out.println(localGroup.name + ": " + cloudName + ": No workers");
+			    	            		System.out.println(localGroup.name + ": " + c.name + ": No workers");
 			            			else
 			            			{
 			            				deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
-			            				executorCloudMap.add(bolt, cloudName);
+			            				executorCloudMap.add(boltName, c.name);
 			            				
 			            				for(ExecutorDetails ex : subexecutors)
-			            	        			tasksByCloudName.add(cloudName, ex.getStartTask());			            				
+			            				{
+		            	        			//tasksByCloudName.add(c.name, ex.getStartTask());
+		            	        			c.addTask(ex.getStartTask());
+			            				}
 			            			}
 			            			
 			            			cloudIndex++;
@@ -331,7 +348,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Global group task distribution
 				for(TaskGroup globalTask : globalTaskList.values())
 				{
-					try {
+					try 
+					{
 						System.out.println("LOG: " + globalTask.name + " distribution");
 						
 						Set<String> cloudDependencies = new HashSet<String>();
@@ -344,61 +362,69 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						}
 						
 						
-						Set<String> cloudSet = supervisorsByCloudName.keySet();
+						//Set<String> cloudSet = supervisorsByCloudName.keySet();
+						Set<String> cloudSet = clouds.keySet();
 						System.out.println("-cloudDependencies: " + cloudDependencies);
 						clocator.update(clocatorFile);
 						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA"; //hardcoded
 						
-						globalTask.clouds.add(choosenCloud);
-						
-						System.out.println("-choosenCloud: " + choosenCloud);
-						
 						if(choosenCloud == null)
 							System.out.println("WARNING! no cloud chosen for this group!");
+						else
+							System.out.println("-choosenCloud: " + choosenCloud);
 						
-						for(String bolt : globalTask.boltsWithParInfo.keySet())
+						Cloud c;
+						
+						if(!clouds.containsKey(choosenCloud))
+							System.out.println("WARNING! " + choosenCloud + " is not available!");
+						else
 						{
-							System.out.println("---" + bolt);
-							List<ExecutorDetails> executors = new ArrayList<ExecutorDetails>();
-							executors.addAll(componentToExecutors.get(bolt));
+							c = clouds.get(choosenCloud);
+							globalTask.clouds2.add(c);
 							
-							List<WorkerSlot> workersInCloud = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
+							for(String bolt : globalTask.boltsWithParInfo.keySet())
+							{
+								System.out.println("---" + bolt);
+								List<ExecutorDetails> executors = new ArrayList<ExecutorDetails>();
+								executors.addAll(componentToExecutors.get(bolt));
+								
+								//get only one cloud in this GlobalTask
+								List<WorkerSlot> workersInCloud = c.getWorkers();
+								//List<WorkerSlot> workersInCloud = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
+								
+								System.out.println("-----subexecutors:" + executors);
+		            			System.out.println("-----workers:" + workersInCloud);
+								
+								if(executors.size() == 0)
+				            		System.out.println(globalTask.name + ": " + bolt + ": No executors");
+				            	else if(workersInCloud.isEmpty())
+		    	            		System.out.println(globalTask.name + ": " + choosenCloud + ": No workers");
+			            		else {
+		            				deployExecutorToWorkers(workersInCloud, executors, executorWorkerMap);
+		            				executorCloudMap.add(bolt, choosenCloud);
+		            				
+		            				for(ExecutorDetails ex : executors)
+		            						c.addTask(ex.getStartTask());
+		            	        			//tasksByCloudName.add(choosenCloud, ex.getStartTask());	            				
+			            		}
+							}
 							
-							System.out.println("-----subexecutors:" + executors);
-	            			System.out.println("-----workers:" + workersInCloud);
+							//Addition for ackers
+							//put all of the ack-bolts to the GlobalTask Cloud
+							List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
+							ackers.addAll(componentToExecutors.get(ackerBolt));
+							List<WorkerSlot> workerAckers = c.getWorkers();
 							
-							if(executors.size() == 0)
-			            		System.out.println(globalTask.name + ": " + bolt + ": No executors");
-			            	else if(workersInCloud.isEmpty())
-	    	            		System.out.println(globalTask.name + ": " + choosenCloud + ": No workers");
-		            		else {
-	            				deployExecutorToWorkers(workersInCloud, executors, executorWorkerMap);
-	            				executorCloudMap.add(bolt, choosenCloud);
-	            				
-	            				for(ExecutorDetails ex : executors)
-	            	        			tasksByCloudName.add(choosenCloud, ex.getStartTask());	            				
-		            		}
+							if(!ackers.isEmpty())
+							{
+								deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
+	        				
+								for(ExecutorDetails ex : ackers)
+									c.addTask(ex.getStartTask());
+							}
 						}
-						
-						
-						//Addition for ackers
-						//put all of the ack-bolts to the GlobalTask Cloud
-						List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
-						ackers.addAll(componentToExecutors.get(ackerBolt));
-						List<WorkerSlot> workerAckers = (List<WorkerSlot>) workersByCloudName.get(choosenCloud);
-						
-						if(!ackers.isEmpty())
-						{
-							deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
-        				
-							for(ExecutorDetails ex : ackers)
-								tasksByCloudName.add(choosenCloud, ex.getStartTask());
-						
-						}
-						//Finish addition for ackers
-					
-						
+
 					} catch(Exception e) {
 						System.out.println(e);
 						}
@@ -426,9 +452,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	            schedulerResultStringBuilder.append("-----------------------------------\n\n");
 	            
 				for(TaskGroup Group : localTaskList.values())
-					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds2 + "\n");
 				for(TaskGroup Group : globalTaskList.values())
-					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds + "\n");
+					schedulerResultStringBuilder.append(Group.name + ": " + Group.clouds2 + "\n");
 				
 				try {
 					FileWriter writer = new FileWriter(schedulerResultFile, true);
@@ -438,8 +464,10 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				
 				//Create a file pair of CloudName and tasks assigned to this cloud
 				//This file is needed for zoneGrouping
-				//format: 
-				printTaskCloudPairs(tasksByCloudName,pairSupervisorTaskFile);
+				try {
+					printTaskCloudPairs(clouds,pairSupervisorTaskFile);
+				} catch(IOException e)
+					{ System.out.println(e.getMessage()); }
 	        }
 	    }
 	        
@@ -535,33 +563,30 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	}
     }
 
-	@SuppressWarnings("unchecked")
-	private void printTaskCloudPairs(MultiMap tasksByCloudName, String fileLocation)
+	private void printTaskCloudPairs(HashMap<String,Cloud> clouds, String fileLocation) throws IOException
 	{
-		System.out.println("tasksByCloudName: " + tasksByCloudName.size());
+		System.out.println("tasksByCloudName: " + clouds.size());
 		
 		StringBuilder taskStringBuilder = new StringBuilder();            
-		for(Object sup : tasksByCloudName.keySet())
+		for(Cloud c : clouds.values())
 		{
-			String taskString = (String) sup + ";";
+			String taskString = (String) c.name + ";";
 		
-			for(Integer t : (List<Integer>) tasksByCloudName.getValues(sup))
+			if(!c.getTasks().isEmpty())
 			{
-				taskString = taskString + t.toString() + ",";
-			}
-		
-			taskStringBuilder.append(taskString.substring(0, taskString.length()-1));
-			taskStringBuilder.append("\n");
+				for(Integer t : c.getTasks())
+					taskString = taskString + t.toString() + ",";
 			
-			System.out.println(taskStringBuilder.toString());
+				taskStringBuilder.append(taskString.substring(0, taskString.length()-1));
+				taskStringBuilder.append("\n");
+				
+				System.out.println(taskStringBuilder.toString());
+			}
 		}
          
-        try 
-        {
 			FileWriter writer = new FileWriter(fileLocation, true);
 			writer.write(taskStringBuilder.toString());
 			writer.close();
-		} catch(Exception e){ }
 	}
 }
 
@@ -571,7 +596,8 @@ class TaskGroup {
 	}
 	
 	public String name;
-	public List<String> clouds = new ArrayList<String>();
+	//public List<String> clouds = new ArrayList<String>();
+	public List<Cloud> clouds2 = new ArrayList<Cloud>();
 	public LinkedHashMap<String,Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
 	public Set<String> boltDependencies = new HashSet<String>();
 }
@@ -646,6 +672,14 @@ class Cloud {
 	 */
 	public List<Integer> getTasks() {
 		return tasks;
+	}
+	
+	public void addTask(Integer T) {
+		tasks.add(T);
+	}
+	
+	public void addTasks(List<Integer> Ts) {
+		tasks.addAll(Ts);
 	}
 	
 }

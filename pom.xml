@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>StormOnEdge</groupId>
   <artifactId>StormOnEdge</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>Scheduler</version>
   <dependencies>
   	<dependency>
   		<groupId>org.clojure</groupId>

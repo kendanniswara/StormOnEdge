@@ -583,6 +583,7 @@ class GlobalTaskGroup extends TaskGroup {
 }
 
 class Cloud {
+	
 	String name;
 	List<SupervisorDetails> supervisors;
 	List<WorkerSlot> workers;
@@ -595,6 +596,11 @@ class Cloud {
 		supervisors = new ArrayList<SupervisorDetails>();
 		workers = new ArrayList<WorkerSlot>();
 		tasks = new ArrayList<Integer>();
+	}
+	
+	@Override
+	public String toString() {
+		return name;
 	}
 
 	/**

@@ -1,4 +1,4 @@
-package grouping;
+package zoneGrouping;
 
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.grouping.CustomStreamGrouping;

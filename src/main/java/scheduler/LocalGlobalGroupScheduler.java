@@ -45,15 +45,12 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	final String ackerBolt = "__acker";
 	final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
-	
 	final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
 	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 	
 	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
 	//String schedulerResultFile = "/home/kend/SchedulerResult.csv";
 	//String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
-	
-	
 	
     public void prepare(Map conf) 
     {

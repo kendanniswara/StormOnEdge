@@ -91,24 +91,21 @@ public class CloudLocator {
 		for(String cloud : cloudNameList)
 		{
 			float currentMaxLatency = 0;
-			
-			//Pass cloud is not registered in the latency table
+			//Skip clouds that are not registered in the latency table
 			if(cloudNames.indexOf(cloud) == -1)
 				continue;
 			
 			//Make sure the chosen cloud is different from their dependencies
-			if(cloudDependencies.contains(cloud))
-				continue;
-			else
+			//if(cloudDependencies.contains(cloud))
+			//	continue;
+			
+			for(String dependency : cloudDependencies)
 			{
-				for(String dependency : cloudDependencies)
-				{
-					int idxDep = cloudNames.indexOf(dependency);
-					int idxCl = cloudNames.indexOf(cloud);
-					float lat = twoDimLatency[idxDep][idxCl];
-					if(lat > currentMaxLatency)
-						currentMaxLatency = lat;
-				}
+				int idxDep = cloudNames.indexOf(dependency);
+				int idxCl = cloudNames.indexOf(cloud);
+				float lat = twoDimLatency[idxDep][idxCl];
+				if(lat > currentMaxLatency)
+					currentMaxLatency = lat;
 			}
 			
 			if(currentMaxLatency < lowestMaxLatency)
@@ -133,16 +130,14 @@ public class CloudLocator {
 			float avgLatency = 0;
 			
 			//Make sure the chosen cloud is different from their dependencies
-			if(cloudDependencies.contains(cloud))
-				continue;
-			else
+			//if(cloudDependencies.contains(cloud))
+			//	continue;
+
+			for(String dependency : cloudDependencies)
 			{
-				for(String dependency : cloudDependencies)
-				{
-					int idxDep = cloudNames.indexOf(dependency);
-					int idxCl = cloudNames.indexOf(cloud);
-					avgLatency += twoDimLatency[idxDep][idxCl];
-				}
+				int idxDep = cloudNames.indexOf(dependency);
+				int idxCl = cloudNames.indexOf(cloud);
+				avgLatency += twoDimLatency[idxDep][idxCl];
 			}
 			
 			avgLatency = avgLatency / cloudDependencies.size();

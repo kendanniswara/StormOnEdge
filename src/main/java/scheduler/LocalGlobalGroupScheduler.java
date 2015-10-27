@@ -1,6 +1,7 @@
 package scheduler;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -69,11 +70,18 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    
 	    try {
 	    	//Reading the information from file
-	    	String sourceCloudTaskFile = storm_config.get(CONF_sourceCloudKey).toString();
-	    	System.out.println("Path for sourceCloudTaskFile : " + sourceCloudTaskFile);
+	    	String inputPath = storm_config.get(CONF_sourceCloudKey).toString();
+	    	System.out.println("Path for sourceCloudTaskFile : " + inputPath);
 	    	
-		    spoutLocationFileReader(sourceCloudTaskFile, spoutCloudsPair);
-		    //taskGroupListFileReader(taskGroupListFile, localTaskList, globalTaskList);
+			if(inputPath != null || checkFileAvailablity(inputPath))
+			{
+				spoutLocationFileReader(inputPath, spoutCloudsPair);
+			}
+			else
+			{
+				System.out.println("Source clouds file not available, scheduler stopped");
+				return;
+			}
 		    
 	    }catch(Exception e){
 	    	System.out.println("Some exception happened when reading the file : \n " + e.getMessage());
@@ -83,7 +91,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    
 	    if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
         {
-        	System.out.println("Reading is not complete, stop scheduling for now");
+        	System.out.println("no sourceClouds detected, scheduler stopped");
         	return;
         }
 	    
@@ -121,8 +129,16 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         }
         
         String clocatorFile = storm_config.get(CONF_cloudLocatorKey).toString();
-        System.out.println("Path for clocatorFile : " + clocatorFile);
-        clocator = new CloudLocator(clocatorFile);
+        if(clocatorFile != null || checkFileAvailablity(clocatorFile))
+		{	 
+	        System.out.println("Path for clocatorFile : " + clocatorFile);
+	        clocator = new CloudLocator(clocatorFile);
+		}
+		else
+		{
+			System.out.println("\n[WARNING] No cloud quality file supplied, scheduler expected to run without this information\n");
+		}
+        
         
 		for (TopologyDetails topology : topologies.getTopologies()) {
 			
@@ -173,7 +189,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							}
 							else
 							{
-								System.out.println("ERROR: " + name + " don't have any valid group. This task will be ignored in scheduling");
+								System.out.println("ERROR: " + name + " don't have any valid Taskgroup. This task will be ignored in scheduling");
 							}
 						}
 						
@@ -377,15 +393,21 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 					schedulerResultStringBuilder.append(Group.name + ": " + Group.taskGroupClouds + "\n");
 				
 				try {
-					FileWriter writer = new FileWriter(storm_config.get(CONF_schedulerResult).toString(), true);
-					writer.write(schedulerResultStringBuilder.toString());
-					writer.close();
-				}catch(Exception e){ }
+					String resultPath = storm_config.get(CONF_schedulerResult).toString();
+					if(resultPath != null || checkFileAvailablity(resultPath))
+					{
+						FileWriter writer = new FileWriter(resultPath, true);
+						writer.write(schedulerResultStringBuilder.toString());
+						writer.close();
+					}
+				} catch(IOException e)
+					{ System.out.println(e.getMessage()); }
+				
 				
 				//Create a file pair of CloudName and tasks assigned to this cloud
 				//This file is needed for zoneGrouping
 				try {
-					printTaskCloudPairs(clouds,storm_config.get(CONF_ZoneGroupingInput).toString());
+						printTaskCloudPairs(clouds,storm_config.get(CONF_ZoneGroupingInput).toString());
 				} catch(IOException e)
 					{ System.out.println(e.getMessage()); }
 	        }
@@ -397,6 +419,15 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	        new EvenScheduler().schedule(topologies, cluster);
     }
 
+    private boolean checkFileAvailablity(String path)
+    {
+    	File file = new File(path);
+    	if (file.exists())
+    	    return true;
+    	else
+    		return false;
+    }
+    
 	private void localTaskGroupDeployment(LocalTaskGroup localGroup,
 			List<ExecutorDetails> executors, Map.Entry<String,Integer> task, 
 			MultiMap executorWorkerMap, MultiMap executorCloudMap) 

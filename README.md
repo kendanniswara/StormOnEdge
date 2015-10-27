@@ -33,7 +33,9 @@ Geo-Scehduler generates 2 files: Scheduler report of the Task placements and ext
 Every nodes that run Supervisor instances need to add information about their cloud location. 
 
 > supervisor.scheduler.meta:
+
 > name: "SUPERVISOR_NAME"
+
 > cloud-name: "CLOUD_NAME"
 
 Group of Supervisors that located in the same datacenter or cloud should have same value for 'cloud_name' 

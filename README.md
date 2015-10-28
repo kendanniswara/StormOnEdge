@@ -19,12 +19,14 @@ To make sure Nimbus call the correct Scheduler, user must put the GeoScheduler a
 Geo-Scheduler needs to get additional information of where the data sources are located and connection quality between clouds. In the current version, these information are supplied from a text file. Path to the files are must be provided in the configuration file.
 
 > geoScheduler.sourceCloudList: "/home/kend/fromSICSCloud/Scheduler-SpoutCloudsPair.txt"
+
 > geoScheduler.cloudInformation: "/home/kend/fromSICSCloud/Scheduler-LatencyMatrix.txt"
 
 Geo-Scehduler generates 2 files: Scheduler report of the Task placements and extra file needed for the custom stream grouping (ZoneGrouping). The Scheduler report is optional and can be omitted if not needed. However, if user want to use ZoneGrouping in their Storm Topology then the later file is compulsory
 
->geoScheduler.out-SchedulerResult: "/home/kend/SchedulerResult.csv"
->geoScheduler.out-ZoneGrouping: "/home/kend/fromSICSCloud/PairSupervisorTasks.txt"
+> geoScheduler.out-SchedulerResult: "/home/kend/SchedulerResult.csv"
+
+> geoScheduler.out-ZoneGrouping: "/home/kend/fromSICSCloud/PairSupervisorTasks.txt"
 
 
 
@@ -32,8 +34,10 @@ Geo-Scehduler generates 2 files: Scheduler report of the Task placements and ext
 
 Every nodes that run Supervisor instances need to add information about their cloud location. 
 
-> supervisor.scheduler.meta:\n
+> supervisor.scheduler.meta:
+
 > name: "SUPERVISOR_NAME"
+
 > cloud-name: "CLOUD_NAME"
 
 Group of Supervisors that located in the same datacenter or cloud should have same value for 'cloud_name' 

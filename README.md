@@ -41,3 +41,5 @@ Every nodes that run Supervisor instances need to add information about their cl
 > cloud-name: "CLOUD_NAME"
 
 Group of Supervisors that located in the same datacenter or cloud should have same value for 'cloud_name' 
+
+Edit

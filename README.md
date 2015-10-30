@@ -16,7 +16,7 @@ To make sure Nimbus call the correct Scheduler, user must put the GeoScheduler n
 
 >storm.scheduler: "scheduler.LocalGlobalGroupScheduler"
 
-Geo-scheduler needs to get additional information of the data sources location and connection quality between clouds. In the current version, these information are supplied from a text file. Path to the files are must be provided in the configuration file. Example of both files can be seen in "Additional file samples" folder. Both file are called every time the scheduler is called (periodically), so it is possible to modify the information when the Storm is running.
+Geo-scheduler needs to get additional information of the data sources location and connection quality between clouds. In the current version, these information are supplied from a text file. Path to the files are must be provided in the configuration file. Example of both files can be seen in "data" folder. Both file are called every time the scheduler is called (periodically), so it is possible to modify the information when the Storm is running.
 
 > geoScheduler.sourceCloudList: "/home/user/Scheduler-SpoutCloudsPair.txt"
 

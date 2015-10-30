@@ -1,2 +1,0 @@
-messageSpoutLocal1;CloudEdgeB,CloudEdgeD,CloudEdgeF,CloudEdgeH,CloudEdgeI
-messageSpoutLocal2;CloudEdgeA,CloudEdgeC,CloudEdgeE,CloudEdgeG,CloudEdgeI

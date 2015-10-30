@@ -9,6 +9,7 @@ import backtype.storm.scheduler.SchedulerAssignmentImpl;
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.scheduler.WorkerSlot;
 import backtype.storm.testing.TestWordCounter;
 import backtype.storm.testing.TestWordSpout;
 import backtype.storm.topology.IBasicBolt;
@@ -24,9 +25,9 @@ import org.mockito.Mockito;
  *
  * @author Hooman
  */
-public class LocalGlobalGroupSchedulerTest {
+public class EvenSchedulerTest {
 
-    public LocalGlobalGroupSchedulerTest() {
+    public EvenSchedulerTest() {
     }
 
     /**
@@ -34,16 +35,16 @@ public class LocalGlobalGroupSchedulerTest {
      */
     @org.junit.Test
     public void testSchedule() {
-        Cluster cluster = createCluster();
-//        LocalGlobalGroupScheduler scheduler = new LocalGlobalGroupScheduler();
-        Topologies topologies = createTopologies();
+        Cluster cluster = createCluster();//        LocalGlobalGroupScheduler scheduler = new LocalGlobalGroupScheduler();
+        String tName = "t1";
+        Topologies topologies = createTopologies(tName);
         EvenScheduler es = new EvenScheduler();
         es.schedule(topologies, cluster);
         Map<String, SchedulerAssignment> assignments = cluster.getAssignments();
-        System.out.println(assignments.size());
-        System.out.println(cluster.getAvailableSlots().toString());
+        assert assignments.size() == 1;
+        Map<ExecutorDetails, WorkerSlot> assignment = assignments.get(tName).getExecutorToSlot();
+        assert assignment.size() == 8;
         // Here, asserts can come.
-//        scheduler.schedule(topologies, cluster);
     }
 
     private Cluster createCluster() {
@@ -75,18 +76,16 @@ public class LocalGlobalGroupSchedulerTest {
 
     }
 
-    private Topologies createTopologies() {
+    private Topologies createTopologies(String tName) {
         TopologyBuilder tb = new TopologyBuilder();
-        IBasicBolt b1 = new TestWordCounter();
-        tb.setBolt("b1", b1, 4);
-        IRichSpout s1 = new TestWordSpout();
-        tb.setSpout("s1", s1, 2);
         Map<ExecutorDetails, String> executors = new HashMap<ExecutorDetails, String>();
-        ExecutorDetails e1 = new ExecutorDetails(0, 1);
-        executors.put(e1, "");
-        TopologyDetails topology = new TopologyDetails("t1", new HashMap(), tb.createTopology(), 4, executors);
+        for (int i = 0; i < 8; i++) {
+            ExecutorDetails e1 = new ExecutorDetails(i, i);
+            executors.put(e1, "");
+        }
+        TopologyDetails topology = new TopologyDetails(tName, new HashMap(), tb.createTopology(), 8, executors);
         Map<String, TopologyDetails> ts = new HashMap<String, TopologyDetails>();
-        ts.put("t1", topology);
+        ts.put(tName, topology);
         Topologies topologies = new Topologies(ts);
         return topologies;
     }

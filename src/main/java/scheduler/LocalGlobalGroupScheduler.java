@@ -118,7 +118,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         		c.addWorkers(cluster.getAvailableSlots(supervisor));
         	}
         }
-        
+
         //print the worker list
         for(Cloud C : clouds.values())
         {

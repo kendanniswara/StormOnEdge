@@ -1,0 +1,2 @@
+messageSpoutLocal1;CloudEdgeB,CloudEdgeD,CloudEdgeF,CloudEdgeH,CloudEdgeA,CloudEdgeC,CloudEdgeE,CloudEdgeG
+messageSpoutLocal2;CloudEdgeC,CloudEdgeE,CloudEdgeG,CloudEdgeI,CloudEdgeB,CloudEdgeD,CloudEdgeF,CloudEdgeH

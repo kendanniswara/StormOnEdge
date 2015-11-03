@@ -60,7 +60,7 @@ public class EvenSchedulerTest {
         SupervisorDetails s3 = new SupervisorDetails("3", "3", null, allPorts);
         SupervisorDetails s4 = new SupervisorDetails("4", "4", null, allPorts);
 
-        Map<String, SupervisorDetails> supervisors = new HashMap();
+        Map<String, SupervisorDetails> supervisors = new HashMap<String, SupervisorDetails>();
         supervisors.put(s1.getId(), s1);
         supervisors.put(s2.getId(), s2);
         supervisors.put(s3.getId(), s3);
@@ -70,7 +70,7 @@ public class EvenSchedulerTest {
         Mockito.when(nimbus.getHostName(Mockito.any(Map.class), Mockito.eq(s2.getId()))).thenReturn(s2.getHost());
         Mockito.when(nimbus.getHostName(Mockito.any(Map.class), Mockito.eq(s3.getId()))).thenReturn(s3.getHost());
         Mockito.when(nimbus.getHostName(Mockito.any(Map.class), Mockito.eq(s4.getId()))).thenReturn(s4.getHost());
-        Map<String, SchedulerAssignmentImpl> assignments = new HashMap();
+        Map<String, SchedulerAssignmentImpl> assignments = new HashMap<String, SchedulerAssignmentImpl>();
 
         return new Cluster(nimbus, supervisors, assignments);
 

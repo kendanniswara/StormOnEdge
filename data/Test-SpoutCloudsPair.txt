@@ -1,0 +1,1 @@
+Spout1;CloudEdgeB,CloudEdgeD,CloudEdgeF,CloudEdgeH

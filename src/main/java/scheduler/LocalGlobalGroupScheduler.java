@@ -349,21 +349,24 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							
 							//Addition for ackers
 							//put all of the ack-bolts to the GlobalTask Cloud
-							List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
-							ackers.addAll(componentToExecutors.get(ackerBolt));
-							List<WorkerSlot> workerAckers = c.getWorkers();
-							
-							if(!ackers.isEmpty())
+							if(!componentToExecutors.get(ackerBolt).isEmpty())
 							{
-								deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
-	        				
-								for(ExecutorDetails ex : ackers)
-									c.addTask(ex.getStartTask());
+								List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
+								ackers.addAll(componentToExecutors.get(ackerBolt));
+								List<WorkerSlot> workerAckers = c.getWorkers();
+								
+								if(!ackers.isEmpty())
+								{
+									deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
+		        				
+									for(ExecutorDetails ex : ackers)
+										c.addTask(ex.getStartTask());
+								}
 							}
 						}
 
 					} catch(Exception e) {
-						System.out.println(e);
+						System.out.println("Acker exception: \n" + e.getMessage());
 						}
 				}
 
@@ -561,7 +564,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 
 	private void printTaskCloudPairs(HashMap<String,Cloud> clouds, String fileLocation) throws IOException
 	{
-		System.out.println("tasksByCloudName: " + clouds.size());
+		System.out.println("tasksByCloudName: ");
 		
 		StringBuilder taskStringBuilder = new StringBuilder();            
 		for(Cloud c : clouds.values())
@@ -575,14 +578,14 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 			
 				taskStringBuilder.append(taskString.substring(0, taskString.length()-1));
 				taskStringBuilder.append("\n");
-				
-				System.out.println(taskStringBuilder.toString());
 			}
 		}
-         
-			FileWriter writer = new FileWriter(fileLocation, true);
-			writer.write(taskStringBuilder.toString());
-			writer.close();
+		
+		System.out.println(taskStringBuilder.toString());
+		
+		FileWriter writer = new FileWriter(fileLocation, true);
+		writer.write(taskStringBuilder.toString());
+		writer.close();
 	}
 }
 

@@ -53,9 +53,10 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	//String schedulerResultFile = "/home/kend/SchedulerResult.csv";
 	//String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
 	
-    public void prepare(Map conf) 
+    @SuppressWarnings("rawtypes")
+	public void prepare(Map conf) 
     {
-    	//Retrieve data from storm.yaml config file 
+    	//Retrieve data from storm.yaml config file
     	storm_config = conf;
     }
 

@@ -116,7 +116,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         		
         		c = clouds.get(metadata.get("cloud-name").toString());
         		c.addSupervisor(supervisor);
-        		c.addWorkers(cluster.getAvailableSlots(supervisor));
+        		if(!cluster.getAvailableSlots(supervisor).isEmpty())
+        			c.addWorkers(cluster.getAvailableSlots(supervisor));
         	}
         }
 
@@ -125,7 +126,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         {
         	System.out.println(C.name + " :");
         	//System.out.println("Supervisors: " + C.getSupervisors());
-        	System.out.println("Workers: " + C.getWorkers());
+        	System.out.println("Available Workers: " + C.getWorkers());
         	System.out.println("");
         }
         
@@ -329,7 +330,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 								executors.addAll(componentToExecutors.get(bolt));
 								
 								//get only one cloud in this GlobalTask
-								List<WorkerSlot> workersInCloud = c.getWorkers();
+								List<WorkerSlot> workersInCloud = c.getSelectedWorkers();
 								
 								System.out.println("-----subexecutors:" + executors);
 		            			System.out.println("-----workers:" + workersInCloud);
@@ -353,7 +354,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							{
 								List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
 								ackers.addAll(componentToExecutors.get(ackerBolt));
-								List<WorkerSlot> workerAckers = c.getWorkers();
+								List<WorkerSlot> workerAckers = c.getSelectedWorkers();
 								
 								if(!ackers.isEmpty())
 								{
@@ -454,7 +455,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 					endidx = executors.size() - 1;
 				
 				List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
-				List<WorkerSlot> workers = c.getWorkers();
+				List<WorkerSlot> workers = c.getSelectedWorkers();
 				
 				System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
 				
@@ -622,6 +623,9 @@ class Cloud {
 	String name;
 	List<SupervisorDetails> supervisors;
 	List<WorkerSlot> workers;
+	List<WorkerSlot> selectedWorkers;
+
+
 	List<Integer> tasks;
 	
 	public Cloud(String n)
@@ -630,6 +634,7 @@ class Cloud {
 		
 		supervisors = new ArrayList<SupervisorDetails>();
 		workers = new ArrayList<WorkerSlot>();
+		selectedWorkers = new ArrayList<WorkerSlot>();
 		tasks = new ArrayList<Integer>();
 	}
 	
@@ -666,10 +671,20 @@ class Cloud {
 	
 	public void addWorker(WorkerSlot worker) {
 		workers.add(worker);
+		selectedWorkers.add(worker);
 	}
 	
 	public void addWorkers(List<WorkerSlot> works) {
 		workers.addAll(works);
+		selectedWorkers.add(works.get(0));
+	}
+	
+	
+	/**
+	 * @return selectedWorkers
+	 */
+	public List<WorkerSlot> getSelectedWorkers() {
+		return selectedWorkers;
 	}
 
 	/**

@@ -87,7 +87,7 @@ public class LocalGlobalSchedulerTest {
         // The following code is to demonstrate how to create an instance of Cluster for unit testing.
         Collection<Number> allPorts = new ArrayList<Number>(2);// two slots per supervisor.
         allPorts.add(PORT);
-        //allPorts.add(PORT+1);
+        allPorts.add(PORT+1);
         
         Map<String, SupervisorDetails> supervisors = new HashMap<String, SupervisorDetails>();//Create clouds with 2 supervisors each
         supervisors.putAll(createSupervisors("CloudEdgeA", 2, allPorts));
@@ -100,8 +100,6 @@ public class LocalGlobalSchedulerTest {
         supervisors.putAll(createSupervisors("CloudEdgeH", 2, allPorts));
         supervisors.putAll(createSupervisors("CloudEdgeI", 2, allPorts));
         supervisors.putAll(createSupervisors("CloudGlobalA", 4, allPorts));
-        //supervisors.putAll(createSupervisors("CloudC", 2, allPorts));
-        //supervisors.putAll(createSupervisors("CloudD", 2, allPorts));
         
         INimbus nimbus = Mockito.mock(INimbus.class);
         for(SupervisorDetails sp : supervisors.values())

@@ -1,4 +1,4 @@
-package scheduler;
+package external;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -7,21 +7,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class CloudLocator {
+public class LatencyCloudsState extends CloudsState {
 	
-	private ArrayList<String> cloudNames;
+	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	private float[][] twoDimLatency;
-	public enum Type {MinMax,Average}
 	
-	public CloudLocator(String fileName){
-		read2DArrayFromFile(fileName);
+	public enum Type {
+		MinMax,
+		Average
+	}
+	
+	@Override
+	public void update() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void init() {
+		// TODO Auto-generated method stub
+
+	}
+	
+	public LatencyCloudsState(String fileName){
+		init(fileName);
 	}
 	
 	public void update(String fileName){
-		read2DArrayFromFile(fileName);
+		init(fileName);
 	}
 	
-	private void read2DArrayFromFile(String fileName)
+	private void init(String fileName)
 	{
 		cloudNames = new ArrayList<String>();
 		
@@ -69,7 +85,7 @@ public class CloudLocator {
 	    }catch(IOException e){}
 	}
 	
-	public String getCloudBasedOnLatency(CloudLocator.Type type, Set<String> cloudNameList, Set<String> cloudDependencies)
+	public String getCloudBasedOnLatency(LatencyCloudsState.Type type, Set<String> cloudNameList, Set<String> cloudDependencies)
 	{
 		
 		String cloud = null;
@@ -153,4 +169,6 @@ public class CloudLocator {
     	
     	return bestCloud;
 	}
+
+
 }

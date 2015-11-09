@@ -1,9 +1,6 @@
 package scheduler;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,7 +9,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -36,15 +32,18 @@ import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
+import external.*;
+
 public class LocalGlobalGroupScheduler implements IScheduler {
 	
 	Random rand = new Random(System.currentTimeMillis());
 	JSONParser parser = new JSONParser();
-	CloudLocator clocator;
+	LatencyCloudsInfo cloudInfo;
+	FileSourceInfo sourceInformation;
 	Map storm_config;
 	
 	final String ackerBolt = "__acker";
-	final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
+	//final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
 	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
@@ -65,41 +64,48 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 	    
-	    HashMap<String,String[]> spoutCloudsPair = new HashMap<String, String[]>();
-	    LinkedHashMap<String, LocalTaskGroup> localTaskList = new LinkedHashMap<String,LocalTaskGroup>();
-	    LinkedHashMap<String, GlobalTaskGroup> globalTaskList = new LinkedHashMap<String,GlobalTaskGroup>();
+	    Collection<SupervisorDetails> supervisors;
+	    HashMap<String, Cloud> clouds; 
 	    
+	    LinkedHashMap<String, LocalTaskGroup> localTaskList;
+	    LinkedHashMap<String, GlobalTaskGroup> globalTaskList;
+	    
+	    System.out.println("Initializing the data sources information");
 	    try {
-	    	//Reading the information from file
-	    	String inputPath = storm_config.get(CONF_sourceCloudKey).toString();
-	    	System.out.println("Path for sourceCloudTaskFile : " + inputPath);
-	    	
-			if(inputPath != null || checkFileAvailablity(inputPath))
-			{
-				spoutLocationFileReader(inputPath, spoutCloudsPair);
-			}
-			else
-			{
-				System.out.println("Source clouds file not available, scheduler stopped");
-				return;
-			}
+	    	sourceInformation = new FileSourceInfo(storm_config);
 		    
-	    }catch(Exception e){
-	    	System.out.println("Some exception happened when reading the file : \n " + e.getMessage());
-	    	e.printStackTrace();
+	    } catch(Exception e) {
+	    	System.out.println(e.getMessage());
+	    	System.out.println("Exception when reading the source information file. Scheduler stopped");
 	    	return;
-	    	}
+	    }
 	    
-	    if(spoutCloudsPair.size() == 0 /*|| globalGroupNameList.size() == 0*/)
+	    if(sourceInformation.getSpoutNames().size() <= 0)
         {
-        	System.out.println("no sourceClouds detected, scheduler stopped");
+        	System.out.println("no spout with source informations, scheduler stopped");
         	return;
         }
+	    System.out.println("OK");
 	    
-	    System.out.println("Start categorizing the supervisor");
-	    Collection<SupervisorDetails> supervisors = cluster.getSupervisors().values();
 	    
-	    HashMap<String, Cloud> clouds = new HashMap<String, Cloud>();
+	    System.out.println("Initializing the cloud quality information");
+        try{
+        	cloudInfo = new LatencyCloudsInfo(storm_config);
+        }
+        catch(Exception e)
+        {
+        	System.out.println(e.getMessage());
+        	System.out.println("Exception when loading the Cloud quality. Scheduler expected to run without this information");
+        	System.out.println("Scheduler stopped");
+        	return;
+        }
+        System.out.println("OK");
+        
+        
+
+	    System.out.println("Categorizing the supervisor based on cloud names");
+	    supervisors = cluster.getSupervisors().values();
+	    clouds = new HashMap<String, Cloud>();
         
         //map the supervisors and workers based on cloud names
         for (SupervisorDetails supervisor : supervisors) 
@@ -125,24 +131,16 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         for(Cloud C : clouds.values())
         {
         	System.out.println(C.name + " :");
-        	//System.out.println("Supervisors: " + C.getSupervisors());
-        	System.out.println("Available Workers: " + C.getWorkers());
-        	System.out.println("");
+        	System.out.println("Available Workers: " + C.getWorkers() + "\n");
         }
         
-        String clocatorFile = storm_config.get(CONF_cloudLocatorKey).toString();
-        if(clocatorFile != null || checkFileAvailablity(clocatorFile))
-		{	 
-	        System.out.println("Path for clocatorFile : " + clocatorFile);
-	        clocator = new CloudLocator(clocatorFile);
-		}
-		else
-		{
-			System.out.println("\n[WARNING] No cloud quality file supplied, scheduler expected to run without this information\n");
-		}
+        
         
         
 		for (TopologyDetails topology : topologies.getTopologies()) {
+			
+			localTaskList = new LinkedHashMap<String,LocalTaskGroup>();
+		    globalTaskList = new LinkedHashMap<String,GlobalTaskGroup>();
 			
 			if (!cluster.needsScheduling(topology) || cluster.getNeedsSchedulingComponentToExecutors(topology).isEmpty()) {
 	            		System.out.println("This topology doesn't need scheduling.");
@@ -182,7 +180,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 							if(schedulergroup != null)
 							{
 								schedulergroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
-								for(String cloudName : spoutCloudsPair.get(name))
+								for(String cloudName : sourceInformation.getCloudLocations(name))
 								{
 									Cloud c = clouds.get(cloudName);
 									schedulergroup.taskGroupClouds.add(c);
@@ -305,8 +303,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						//Set<String> cloudSet = supervisorsByCloudName.keySet();
 						Set<String> cloudSet = clouds.keySet();
 						System.out.println("-cloudDependencies: " + cloudDependencies);
-						clocator.update(clocatorFile);
-						String choosenCloud = clocator.getCloudBasedOnLatency(CloudLocator.Type.MinMax, cloudSet, cloudDependencies);
+						String choosenCloud = cloudInfo.bestCloud(LatencyCloudsInfo.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA"; //hardcoded
 						
 						if(choosenCloud == null)
@@ -475,58 +472,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				cloudIndex++;
 			}
 		}
-	}
-
-	private void spoutLocationFileReader(String sourceCloudTaskFile,
-			HashMap<String, String[]> spoutCloudsPair)
-			throws FileNotFoundException, IOException {
-		FileReader pairDataFile;
-		BufferedReader textReader;
-		String line;
-		pairDataFile = new FileReader(sourceCloudTaskFile);
-		textReader  = new BufferedReader(pairDataFile);
-		
-		line = textReader.readLine();
-		while(line != null && !line.equals(""))
-		{
-			//Format
-			//SpoutID;cloudA,cloudB,cloudC
-			System.out.println("Read from file: " + line);
-			String[] pairString = line.split(";");
-			String[] cloudList = pairString[1].split(",");
-			spoutCloudsPair.put(pairString[0],cloudList);
-			
-			line = textReader.readLine();
-		}
-		textReader.close();
-	}
-    
-	private void taskGroupListFileReader(
-			String taskGroupFile,
-			LinkedHashMap<String, LocalTaskGroup> localGroupNameList,
-			LinkedHashMap<String, GlobalTaskGroup> globalGroupNameList)
-			throws FileNotFoundException, IOException {
-		FileReader pairDataFile;
-		BufferedReader textReader;
-		String line;
-		pairDataFile = new FileReader(taskGroupFile);
-		textReader  = new BufferedReader(pairDataFile);
-		
-		line = textReader.readLine();
-		while(line != null && !line.equals(""))
-		{
-			//Format
-			//Global1;Global / Local1;Local
-			System.out.println("Read from file: " + line);
-			String[] pairString = line.split(";");
-			if(pairString[1].contains("Local"))
-				localGroupNameList.put(pairString[0],new LocalTaskGroup(pairString[0]));
-			else if(pairString[1].contains("Global"))
-				globalGroupNameList.put(pairString[0],new GlobalTaskGroup(pairString[0]));
-
-			line = textReader.readLine();
-		}
-		textReader.close();
 	}
 
 	private void deployExecutorToWorkers(List<WorkerSlot> cloudWorkers, List<ExecutorDetails> executors, MultiMap executorWorkerMap)

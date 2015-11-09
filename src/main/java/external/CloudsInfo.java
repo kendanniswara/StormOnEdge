@@ -2,12 +2,12 @@ package external;
 
 import java.util.ArrayList;
 
-public abstract class CloudsState {
+public abstract class CloudsInfo {
 	
-	private ArrayList<String> cloudNames = new ArrayList<String>();
-	
-	public abstract void update();
-	public abstract void init();
+	protected ArrayList<String> cloudNames = new ArrayList<String>();
 	
 	
+	public abstract float quality(String cloudName1, String cloudName2);
+	public abstract String bestCloud();
+
 }

@@ -26,7 +26,7 @@ public class FileSourceInfo extends SourceInfo {
 				{
 					//Format
 					//SpoutID;cloudA,cloudB,cloudC
-					System.out.println("Read from file: " + line);
+					System.out.println("~~Read from file: " + line);
 					String[] pairString = line.split(";");
 					String spoutName = pairString[0];
 					String[] cloudList = pairString[1].split(",");

@@ -9,21 +9,18 @@ public abstract class SourceInfo {
 	
 	protected abstract void init();
 	
-	public ArrayList<String> getCloudLocations(String spoutName)
-	{
+	public ArrayList<String> getCloudLocations(String spoutName) {
 		if(spoutCloudsPair.containsKey(spoutName))
 			return spoutCloudsPair.get(spoutName);
 		else
 			return new ArrayList<String>(); //return empty list
 	}
 	
-	public Set<String> getSpoutNames()
-	{
+	public Set<String> getSpoutNames() {
 		return spoutCloudsPair.keySet();
 	}
 	
-	private void addCloudLocation(String spoutName, String cloudName)
-	{
+	private void addCloudLocation(String spoutName, String cloudName) {
 		if(spoutCloudsPair.containsKey(spoutName)) {
 			spoutCloudsPair.get(spoutName).add(cloudName);
 		}
@@ -34,8 +31,7 @@ public abstract class SourceInfo {
 		}
 	}
 	
-	protected void addCloudLocations(String spoutName, String[] cloudNames)
-	{
+	protected void addCloudLocations(String spoutName, String[] cloudNames) {
 		for(String cloudName : cloudNames) {
 			addCloudLocation(spoutName, cloudName);
 		}
@@ -46,6 +42,5 @@ public abstract class SourceInfo {
 		for(String cloudName : cloudNames) {
 			addCloudLocation(spoutName, cloudName);
 		}
-	}
-	
+	}	
 }

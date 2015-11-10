@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,6 +32,7 @@ import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
 import external.*;
+import core.*;
 
 public class LocalGlobalGroupScheduler implements IScheduler {
 	
@@ -44,7 +44,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	
 	final String ackerBolt = "__acker";
 	//final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
-	final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
+	//final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
 	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 	
@@ -64,7 +64,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	
 	    System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 	    
-	    Collection<SupervisorDetails> supervisors;
+	    List<SupervisorDetails> supervisors;
 	    HashMap<String, Cloud> clouds; 
 	    
 	    LinkedHashMap<String, LocalTaskGroup> localTaskList;
@@ -104,7 +104,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         
 
 	    System.out.println("Categorizing the supervisor based on cloud names");
-	    supervisors = cluster.getSupervisors().values();
+	    supervisors = new ArrayList<SupervisorDetails>(cluster.getSupervisors().values());
 	    clouds = new HashMap<String, Cloud>();
         
         //map the supervisors and workers based on cloud names
@@ -130,7 +130,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
         //print the worker list
         for(Cloud C : clouds.values())
         {
-        	System.out.println(C.name + " :");
+        	System.out.println(C.getName() + " :");
         	System.out.println("Available Workers: " + C.getWorkers() + "\n");
         }
         
@@ -402,16 +402,15 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						writer.write(schedulerResultStringBuilder.toString());
 						writer.close();
 					}
-				} catch(IOException e)
+				} catch(Exception e)
 					{ System.out.println(e.getMessage()); }
 				
 				
 				//Create a file pair of CloudName and tasks assigned to this cloud
 				//This file is needed for zoneGrouping
-				try {
-						printTaskCloudPairs(clouds,storm_config.get(CONF_ZoneGroupingInput).toString());
-				} catch(IOException e)
-					{ System.out.println(e.getMessage()); }
+				//Connector can be modified by any means: Zookeeper, oracle, etc
+				ZoneGroupingConnector zgConnector = new ZoneGroupingConnector(storm_config);
+				zgConnector.writeInfo(clouds);
 	        }
 	    }
 	        
@@ -454,14 +453,14 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
 				List<WorkerSlot> workers = c.getSelectedWorkers();
 				
-				System.out.println("---" + c.name + "\n" + "-----subexecutors:" + subexecutors);
+				System.out.println("---" + c.getName() + "\n" + "-----subexecutors:" + subexecutors);
 				
 				if(workers == null || workers.isEmpty())
-		    		System.out.println(localGroup.name + ": " + c.name + ": No workers");
+		    		System.out.println(localGroup.name + ": " + c.getName() + ": No workers");
 				else
 				{
 					deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
-					executorCloudMap.add(taskName, c.name);
+					executorCloudMap.add(taskName, c.getName());
 					
 					for(ExecutorDetails ex : subexecutors)
 					{
@@ -508,143 +507,6 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     	}
     }
 
-	private void printTaskCloudPairs(HashMap<String,Cloud> clouds, String fileLocation) throws IOException
-	{
-		System.out.println("tasksByCloudName: ");
-		
-		StringBuilder taskStringBuilder = new StringBuilder();            
-		for(Cloud c : clouds.values())
-		{
-			String taskString = (String) c.name + ";";
-		
-			if(!c.getTasks().isEmpty())
-			{
-				for(Integer t : c.getTasks())
-					taskString = taskString + t.toString() + ",";
-			
-				taskStringBuilder.append(taskString.substring(0, taskString.length()-1));
-				taskStringBuilder.append("\n");
-			}
-		}
-		
-		System.out.println(taskStringBuilder.toString());
-		
-		FileWriter writer = new FileWriter(fileLocation, true);
-		writer.write(taskStringBuilder.toString());
-		writer.close();
-	}
-}
-
-class TaskGroup {
-	public TaskGroup(String Groupname) {
-		name = Groupname;
-	}
-	
-	public String name;
-	//public List<String> clouds = new ArrayList<String>();
-	public List<Cloud> taskGroupClouds = new ArrayList<Cloud>();
-	public LinkedHashMap<String,Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
-	public Set<String> boltDependencies = new HashSet<String>();
-}
-
-class LocalTaskGroup extends TaskGroup {
-	public LocalTaskGroup(String Groupname) {
-		super(Groupname);
-	}
-	
-	public LinkedHashMap<String,Integer> spoutsWithParInfo = new LinkedHashMap<String, Integer>();
-}
-
-class GlobalTaskGroup extends TaskGroup {
-	public GlobalTaskGroup(String Groupname) {
-		super(Groupname);
-	}
-	
 	
 }
 
-class Cloud {
-	
-	String name;
-	List<SupervisorDetails> supervisors;
-	List<WorkerSlot> workers;
-	List<WorkerSlot> selectedWorkers;
-
-
-	List<Integer> tasks;
-	
-	public Cloud(String n)
-	{
-		name = n;
-		
-		supervisors = new ArrayList<SupervisorDetails>();
-		workers = new ArrayList<WorkerSlot>();
-		selectedWorkers = new ArrayList<WorkerSlot>();
-		tasks = new ArrayList<Integer>();
-	}
-	
-	@Override
-	public String toString() {
-		return name;
-	}
-
-	/**
-	 * @return the name
-	 */
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * @return the supervisors
-	 */
-	public List<SupervisorDetails> getSupervisors() {
-		return supervisors;
-	}
-	
-	public void addSupervisor(SupervisorDetails sup)
-	{
-		supervisors.add(sup);
-	}
-
-	/**
-	 * @return the workers
-	 */
-	public List<WorkerSlot> getWorkers() {
-		return workers;
-	}
-	
-	public void addWorker(WorkerSlot worker) {
-		workers.add(worker);
-		selectedWorkers.add(worker);
-	}
-	
-	public void addWorkers(List<WorkerSlot> works) {
-		workers.addAll(works);
-		selectedWorkers.add(works.get(0));
-	}
-	
-	
-	/**
-	 * @return selectedWorkers
-	 */
-	public List<WorkerSlot> getSelectedWorkers() {
-		return selectedWorkers;
-	}
-
-	/**
-	 * @return the tasks
-	 */
-	public List<Integer> getTasks() {
-		return tasks;
-	}
-	
-	public void addTask(Integer T) {
-		tasks.add(T);
-	}
-	
-	public void addTasks(List<Integer> Ts) {
-		tasks.addAll(Ts);
-	}
-	
-}

@@ -409,8 +409,9 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Create a file pair of CloudName and tasks assigned to this cloud
 				//This file is needed for zoneGrouping
 				//Connector can be modified by any means: Zookeeper, oracle, etc
-				ZoneGroupingConnector zgConnector = new ZoneGroupingConnector(storm_config);
-				zgConnector.writeInfo(clouds);
+				FileBasedZGConnector zgConnector = new FileBasedZGConnector(storm_config);
+				zgConnector.addInfo(clouds);
+				zgConnector.writeInfo();
 	        }
 	    }
 	        

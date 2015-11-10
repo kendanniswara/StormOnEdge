@@ -4,21 +4,18 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.mortbay.util.MultiMap;
-import core.Cloud;
 
-public class ZoneGroupingConnector {
+public class FileBasedZGConnector extends ZGConnector {
 	
 	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 	
-	MultiMap tasksByCloudName = new MultiMap();
 	@SuppressWarnings("rawtypes")
 	Map storm_conf;
 	
-	public ZoneGroupingConnector(Map conf){ 
+	public FileBasedZGConnector(Map conf){ 
 		storm_conf = conf;
 		
 		String resultPath = storm_conf.get(CONF_ZoneGroupingInput).toString();
@@ -29,7 +26,18 @@ public class ZoneGroupingConnector {
 		}
 	}
 	
-	public MultiMap readInfoFromStormConf()
+	@Override
+	public void writeInfo() {
+		writeInfoToFile();
+	}
+
+	@Override
+	public MultiMap readInfo() {
+		return readInfoFromStormConf();
+	}
+	
+	
+	private MultiMap readInfoFromStormConf()
 	{
 		try {
 			String resultPath = storm_conf.get(CONF_ZoneGroupingInput).toString();
@@ -64,24 +72,7 @@ public class ZoneGroupingConnector {
 		
 		return tasksByCloudName;
 	}
-	
-	
-	public void writeInfo(HashMap<String,Cloud> clouds) {
-		
-		for(Cloud c : clouds.values())
-		{
-			String cloudName = (String) c.getName() + ";";
-			
-			if(!c.getTasks().isEmpty())
-			{
-				for(Integer t : c.getTasks())
-					tasksByCloudName.add(cloudName, t);	
-			}
-		}
-		
-		writeInfoToFile();
-	}
-	
+
 	private void writeInfoToFile() {
 		
 		StringBuilder taskStringBuilder = new StringBuilder();   
@@ -114,4 +105,6 @@ public class ZoneGroupingConnector {
 			System.out.println("WARNING: No file provided for the ZoneGrouping!");
 		}
 	}
+
+
 }

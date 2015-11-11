@@ -2,7 +2,6 @@ package scheduler;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +45,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	//final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 	//final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
 	final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
-	final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
+	//final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 	
 	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
 	//String schedulerResultFile = "/home/kend/SchedulerResult.csv";
@@ -82,7 +81,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	    
 	    if(sourceInformation.getSpoutNames().size() <= 0)
         {
-        	System.out.println("no spout with source informations, scheduler stopped");
+        	System.out.println("no spout with source information, scheduler stopped");
         	return;
         }
 	    System.out.println("OK");
@@ -164,26 +163,26 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
-							LocalTaskGroup schedulergroup = null;
+							LocalTaskGroup schedulerGroup;
 							
 							//Spout only reside in LocalTask
 							if(localTaskList.containsKey(groupName))
-								schedulergroup = localTaskList.get(groupName);
+								schedulerGroup = localTaskList.get(groupName);
 							else
 							{
 								//Create new LocalTaskGroup
 								LocalTaskGroup newTaskGroup =  new LocalTaskGroup(groupName);
 								localTaskList.put(groupName,newTaskGroup);
-								schedulergroup = newTaskGroup;
+								schedulerGroup = newTaskGroup;
 							}
 							
-							if(schedulergroup != null)
+							if(schedulerGroup != null)
 							{
-								schedulergroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
+								schedulerGroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
 								for(String cloudName : sourceInformation.getCloudLocations(name))
 								{
 									Cloud c = clouds.get(cloudName);
-									schedulergroup.taskGroupClouds.add(c);
+									schedulerGroup.taskGroupClouds.add(c);
 								}
 									
 							}
@@ -208,30 +207,30 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 						
 						if(conf.get("group-name") != null){
 							String groupName = (String)conf.get("group-name");
-							TaskGroup schedulergroup = null;
+							TaskGroup schedulerGroup;
 							
 							//each task only reside in one group
 							//Check list of localTask first, then globalTask
 							if(localTaskList.containsKey(groupName))
-								schedulergroup = localTaskList.get(groupName);
+								schedulerGroup = localTaskList.get(groupName);
 							else if(globalTaskList.containsKey(groupName))
-								schedulergroup = globalTaskList.get(groupName);
+								schedulerGroup = globalTaskList.get(groupName);
 							else
 							{
 								//Create new GlobalTaskGroup
 								GlobalTaskGroup newTaskGroup =  new GlobalTaskGroup(groupName);
 								globalTaskList.put(groupName,newTaskGroup);
-								schedulergroup = newTaskGroup;
+								schedulerGroup = newTaskGroup;
 							}
 							
-							if(schedulergroup != null)
+							if(schedulerGroup != null)
 							{
-								schedulergroup.boltsWithParInfo.put(name, b.get_common().get_parallelism_hint());
+								schedulerGroup.boltsWithParInfo.put(name, b.get_common().get_parallelism_hint());
 								
 								for(GlobalStreamId streamId : inputStreams)
 								{
 									System.out.println("--dependent to " + streamId.get_componentId());
-									schedulergroup.boltDependencies.add(streamId.get_componentId());
+									schedulerGroup.boltDependencies.add(streamId.get_componentId());
 								}
 							}
 							else
@@ -374,7 +373,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	            schedulerResultStringBuilder.append("Task number to worker location\n");
 	            schedulerResultStringBuilder.append("-----------------------------------\n\n");
 	            schedulerResultStringBuilder.append(needScheduling + "\n");
-	            for(Object ws : executorWorkerMap.keySet())
+				//noinspection Duplicates
+				for(Object ws : executorWorkerMap.keySet())
 	        	{
 	            	List<ExecutorDetails> edetails = (List<ExecutorDetails>) executorWorkerMap.getValues(ws);
 	            	WorkerSlot wslot = (WorkerSlot) ws;
@@ -396,7 +396,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				
 				try {
 					String resultPath = storm_config.get(CONF_schedulerResult).toString();
-					if(resultPath != null || checkFileAvailablity(resultPath))
+					if(resultPath != null || checkFileAvailability(resultPath))
 					{
 						FileWriter writer = new FileWriter(resultPath, true);
 						writer.write(schedulerResultStringBuilder.toString());
@@ -421,13 +421,10 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 	        new EvenScheduler().schedule(topologies, cluster);
     }
 
-    private boolean checkFileAvailablity(String path)
+    private boolean checkFileAvailability(String path)
     {
     	File file = new File(path);
-    	if (file.exists())
-    	    return true;
-    	else
-    		return false;
+		return file.exists();
     }
     
 	private void localTaskGroupDeployment(LocalTaskGroup localGroup,

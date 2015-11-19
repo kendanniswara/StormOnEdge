@@ -1,4 +1,4 @@
-package core;
+package grouping;
 
 import java.util.LinkedHashMap;
 

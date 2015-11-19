@@ -1,19 +1,23 @@
-package external;
+package state.file;
 
+import scheduler.CloudAssignment;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.mortbay.util.MultiMap;
+import state.ZGConnector;
 
-public class FileBasedZGConnector extends ZGConnector {
+public class FileBasedZGConnector implements ZGConnector {
 
   final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
+  private final MultiMap tasksByCloudName = new MultiMap();
 
   @SuppressWarnings("rawtypes")
-  Map storm_conf;
+  private final Map storm_conf;
 
   public FileBasedZGConnector(Map conf) {
     storm_conf = conf;
@@ -44,7 +48,7 @@ public class FileBasedZGConnector extends ZGConnector {
 
       String line = textReader.readLine();
       while (line != null && !line.equals("")) {
-		    	//Format:
+        //Format:
         //cloudA;1,2,3,4,5
         String[] pairString = line.split(";");
         String key = pairString[0];
@@ -98,6 +102,20 @@ public class FileBasedZGConnector extends ZGConnector {
     } catch (Exception e) {
       System.out.println(e.getMessage());
       System.out.println("WARNING: No file provided for the ZoneGrouping!");
+    }
+  }
+
+  @Override
+  public void addInfo(HashMap<String, CloudAssignment> clouds) {
+
+    for (CloudAssignment c : clouds.values()) {
+      String cloudName = (String) c.getName() + ";";
+
+      if (!c.getTasks().isEmpty()) {
+        for (Integer t : c.getTasks()) {
+          tasksByCloudName.add(cloudName, t);
+        }
+      }
     }
   }
 

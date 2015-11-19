@@ -1,4 +1,4 @@
-package core;
+package grouping;
 
 public class GlobalTaskGroup extends TaskGroup {
 

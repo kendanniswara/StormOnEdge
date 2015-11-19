@@ -4,7 +4,6 @@ import backtype.storm.generated.Bolt;
 import backtype.storm.generated.SpoutSpec;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.Cluster;
-import backtype.storm.scheduler.EvenScheduler;
 import backtype.storm.scheduler.ExecutorDetails;
 import backtype.storm.scheduler.INimbus;
 import backtype.storm.scheduler.SchedulerAssignment;
@@ -22,10 +21,6 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.topology.base.BaseRichSpout;
 import backtype.storm.tuple.Tuple;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -37,23 +32,23 @@ import org.mockito.Mockito;
  *
  * @author Ken
  */
-public class LocalGlobalSchedulerTest {
+public class GeoAwareSchedulerTest {
 
   private final int PORT = 6700;
 
-  public LocalGlobalSchedulerTest() {
+  public GeoAwareSchedulerTest() {
   }
 
   /**
-   * Test of schedule method, of class LocalGlobalGroupScheduler.
+   * Test of schedule method, of class GeoAwareScheduler.
    */
   @org.junit.Test
   public void testSchedule() {
-    Cluster cluster = createCluster(); // LocalGlobalGroupScheduler scheduler = new LocalGlobalGroupScheduler();
+    Cluster cluster = createCluster(); // GeoAwareScheduler scheduler = new GeoAwareScheduler();
 
     String tName = "t1";
     Topologies topologies = createTopologies(tName);
-    LocalGlobalGroupScheduler lg = new LocalGlobalGroupScheduler();
+    GeoAwareScheduler lg = new GeoAwareScheduler();
 
     Map<String, Object> conf = dummyStormCONF();
 

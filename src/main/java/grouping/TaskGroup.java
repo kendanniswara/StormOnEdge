@@ -1,5 +1,6 @@
-package core;
+package grouping;
 
+import scheduler.CloudAssignment;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -14,7 +15,7 @@ public class TaskGroup {
 
   public String name;
   //public List<String> clouds = new ArrayList<String>();
-  public List<Cloud> taskGroupClouds = new ArrayList<Cloud>();
+  public List<CloudAssignment> taskGroupClouds = new ArrayList<CloudAssignment>();
   public LinkedHashMap<String, Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
   public Set<String> boltDependencies = new HashSet<String>();
 }

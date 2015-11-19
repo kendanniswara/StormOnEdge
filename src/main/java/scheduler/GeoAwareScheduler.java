@@ -1,5 +1,11 @@
 package scheduler;
 
+import grouping.LocalTaskGroup;
+import grouping.TaskGroup;
+import grouping.GlobalTaskGroup;
+import state.file.FileBasedZGConnector;
+import state.file.FileBasedCloudsInfo;
+import state.file.FileSourceInfo;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -29,16 +35,17 @@ import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
+import state.CloudsInfo;
+import state.SourceInfo;
+import state.ZGConnector;
 
-import external.*;
-import core.*;
 
-public class LocalGlobalGroupScheduler implements IScheduler {
+public class GeoAwareScheduler implements IScheduler {
 
   Random rand = new Random(System.currentTimeMillis());
   JSONParser parser = new JSONParser();
-  LatencyCloudsInfo cloudInfo;
-  FileSourceInfo sourceInformation;
+  CloudsInfo cloudInfo;
+  SourceInfo sourceInformation;
   Map storm_config;
 
   final String ackerBolt = "__acker";
@@ -62,7 +69,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     System.out.println("NetworkAwareGroupScheduler: begin scheduling");
 
     List<SupervisorDetails> supervisors;
-    HashMap<String, Cloud> clouds;
+    HashMap<String, CloudAssignment> clouds;
 
     LinkedHashMap<String, LocalTaskGroup> localTaskList;
     LinkedHashMap<String, GlobalTaskGroup> globalTaskList;
@@ -85,7 +92,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 
     System.out.println("Initializing the cloud quality information");
     try {
-      cloudInfo = new LatencyCloudsInfo(storm_config);
+      // TODO: based on the configurations, should instanciate the right implementations, e.g., filebased, remote or etc.
+      cloudInfo = new FileBasedCloudsInfo(storm_config);
     } catch (Exception e) {
       System.out.println(e.getMessage());
       System.out.println("Exception when loading the Cloud quality. Scheduler expected to run without this information");
@@ -96,16 +104,16 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 
     System.out.println("Categorizing the supervisor based on cloud names");
     supervisors = new ArrayList<SupervisorDetails>(cluster.getSupervisors().values());
-    clouds = new HashMap<String, Cloud>();
+    clouds = new HashMap<String, CloudAssignment>();
 
     //map the supervisors and workers based on cloud names
     for (SupervisorDetails supervisor : supervisors) {
       Map<String, Object> metadata = (Map<String, Object>) supervisor.getSchedulerMeta();
       if (metadata.get("cloud-name") != null) {
-        Cloud c;
+        CloudAssignment c;
 
         if (!clouds.containsKey(metadata.get("cloud-name"))) {
-          clouds.put(metadata.get("cloud-name").toString(), new Cloud(metadata.get("cloud-name").toString()));
+          clouds.put(metadata.get("cloud-name").toString(), new CloudAssignment(metadata.get("cloud-name").toString()));
           System.out.println("[Cloud] Create new cloud called " + metadata.get("cloud-name").toString());
         }
 
@@ -118,7 +126,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     }
 
     //print the worker list
-    for (Cloud C : clouds.values()) {
+    for (CloudAssignment C : clouds.values()) {
       System.out.println(C.getName() + " :");
       System.out.println("Available Workers: " + C.getWorkers() + "\n");
     }
@@ -164,7 +172,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
               if (schedulerGroup != null) {
                 schedulerGroup.spoutsWithParInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
                 for (String cloudName : sourceInformation.getCloudLocations(name)) {
-                  Cloud c = clouds.get(cloudName);
+                  CloudAssignment c = clouds.get(cloudName);
                   schedulerGroup.taskGroupClouds.add(c);
                 }
 
@@ -273,7 +281,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
             //Set<String> cloudSet = supervisorsByCloudName.keySet();
             Set<String> cloudSet = clouds.keySet();
             System.out.println("-cloudDependencies: " + cloudDependencies);
-            String choosenCloud = cloudInfo.bestCloud(LatencyCloudsInfo.Type.MinMax, cloudSet, cloudDependencies);
+            String choosenCloud = cloudInfo.bestCloud(FileBasedCloudsInfo.Type.MinMax, cloudSet, cloudDependencies);
 						//String choosenCloud = "CloudMidA"; //hardcoded
 
             if (choosenCloud == null) {
@@ -282,7 +290,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
               System.out.println("-choosenCloud: " + choosenCloud);
             }
 
-            Cloud c;
+            CloudAssignment c;
 
             if (!clouds.containsKey(choosenCloud)) {
               System.out.println("WARNING! " + choosenCloud + " is not available!");
@@ -316,7 +324,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
               }
 
 							//Addition for ackers
-              //put all of the ack-bolts to the GlobalTask Cloud
+              //put all of the ack-bolts to the GlobalTask CloudAssignment
               if (!componentToExecutors.get(ackerBolt).isEmpty()) {
                 List<ExecutorDetails> ackers = new ArrayList<ExecutorDetails>();
                 ackers.addAll(componentToExecutors.get(ackerBolt));
@@ -379,7 +387,8 @@ public class LocalGlobalGroupScheduler implements IScheduler {
 				//Create a file pair of CloudName and tasks assigned to this cloud
         //This file is needed for zoneGrouping
         //Connector can be modified by any means: Zookeeper, oracle, etc
-        FileBasedZGConnector zgConnector = new FileBasedZGConnector(storm_config);
+        // TODO: Based on the configuration decidec what type of zone grouping to use.
+        ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
         zgConnector.addInfo(clouds);
         zgConnector.writeInfo();
       }
@@ -407,7 +416,7 @@ public class LocalGlobalGroupScheduler implements IScheduler {
     } else {
       int cloudIndex = 0;
       int executorPerCloud = taskParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
-      for (Cloud c : localGroup.taskGroupClouds) {
+      for (CloudAssignment c : localGroup.taskGroupClouds) {
         int startidx = cloudIndex * executorPerCloud;
         int endidx = startidx + executorPerCloud;
 

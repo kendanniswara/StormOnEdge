@@ -1,4 +1,4 @@
-package grouping;
+package grouping.topology;
 
 import java.util.LinkedHashMap;
 

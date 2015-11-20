@@ -1,4 +1,4 @@
-package grouping;
+package grouping.stream;
 
 import java.util.ArrayList;
 import java.util.HashMap;

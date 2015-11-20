@@ -1,8 +1,8 @@
 package scheduler;
 
-import grouping.LocalTaskGroup;
-import grouping.TaskGroup;
-import grouping.GlobalTaskGroup;
+import grouping.topology.LocalTaskGroup;
+import grouping.topology.TaskGroup;
+import grouping.topology.GlobalTaskGroup;
 import state.file.FileBasedZGConnector;
 import state.file.FileBasedCloudsInfo;
 import state.file.FileSourceInfo;

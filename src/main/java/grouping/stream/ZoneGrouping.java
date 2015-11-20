@@ -1,4 +1,4 @@
-package zoneGrouping;
+package grouping.stream;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,8 +10,8 @@ import org.mortbay.util.MultiMap;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.grouping.CustomStreamGrouping;
 import backtype.storm.task.WorkerTopologyContext;
-import external.FileBasedZGConnector;
-import external.ZGConnector;
+import state.file.FileBasedZGConnector;
+import state.ZGConnector;
 
 public abstract class ZoneGrouping implements CustomStreamGrouping {
 

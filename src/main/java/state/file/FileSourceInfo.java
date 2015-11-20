@@ -1,14 +1,19 @@
-package external;
+package state.file;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import state.SourceInfo;
 
-public class FileSourceInfo extends SourceInfo {
+public class FileSourceInfo implements SourceInfo {
 
-  Map storm_config;
+  private HashMap<String, ArrayList<String>> spoutCloudsPair = new HashMap<String, ArrayList<String>>();
+  private final Map storm_config;
   final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
 
   public FileSourceInfo(Map conf) throws FileNotFoundException {
@@ -23,7 +28,7 @@ public class FileSourceInfo extends SourceInfo {
 
         line = textReader.readLine();
         while (line != null && !line.equals("")) {
-					//Format
+          //Format
           //SpoutID;cloudA,cloudB,cloudC
           System.out.println("~~Read from file: " + line);
           String[] pairString = line.split(";");
@@ -44,8 +49,12 @@ public class FileSourceInfo extends SourceInfo {
   }
 
   @Override
-  protected void init() {
-
+  public ArrayList<String> getCloudLocations(String spoutName) {
+    if (spoutCloudsPair.containsKey(spoutName)) {
+      return spoutCloudsPair.get(spoutName);
+    } else {
+      return new ArrayList<String>(); //return empty list
+    }
   }
 
   private boolean checkFileAvailablity(String path) {
@@ -54,6 +63,32 @@ public class FileSourceInfo extends SourceInfo {
       return true;
     } else {
       return false;
+    }
+  }
+
+  public Set<String> getSpoutNames() {
+    return spoutCloudsPair.keySet();
+  }
+
+  private void addCloudLocation(String spoutName, String cloudName) {
+    if (spoutCloudsPair.containsKey(spoutName)) {
+      spoutCloudsPair.get(spoutName).add(cloudName);
+    } else {
+      ArrayList<String> clouds = new ArrayList<String>();
+      clouds.add(cloudName);
+      spoutCloudsPair.put(spoutName, clouds);
+    }
+  }
+
+  private void addCloudLocations(String spoutName, String[] cloudNames) {
+    for (String cloudName : cloudNames) {
+      addCloudLocation(spoutName, cloudName);
+    }
+  }
+
+  protected void addCloudLocations(String spoutName, ArrayList<String> cloudNames) {
+    for (String cloudName : cloudNames) {
+      addCloudLocation(spoutName, cloudName);
     }
   }
 

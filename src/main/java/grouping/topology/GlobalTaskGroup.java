@@ -1,4 +1,4 @@
-package core;
+package grouping.topology;
 
 public class GlobalTaskGroup extends TaskGroup {
 

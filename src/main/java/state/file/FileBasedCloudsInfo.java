@@ -1,19 +1,21 @@
-package external;
+package state.file;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import state.CloudsInfo;
 
-public class LatencyCloudsInfo extends CloudsInfo {
+public class FileBasedCloudsInfo implements CloudsInfo {
 
   private final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
   private float[][] twoDimLatency;
-  private Map storm_config;
+  private final Map storm_config;
+  private LinkedList<String> cloudNames;
 
   public enum Type {
 
@@ -21,7 +23,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
     Average
   }
 
-  public LatencyCloudsInfo(Map conf) {
+  public FileBasedCloudsInfo(Map conf) {
     storm_config = conf;
     init();
   }
@@ -31,7 +33,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
   }
 
   private void init() {
-    cloudNames = new ArrayList<String>();
+    cloudNames = new LinkedList<String>();
     String inputPath = storm_config.get(CONF_cloudLocatorKey).toString();
 
     //Reading the information from file
@@ -43,7 +45,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
       dataFile = new FileReader(inputPath);
       textReader = new BufferedReader(dataFile);
 
-		    //read first line
+      //read first line
       //Format:
       //cloudA,cloudB,cloudC
       line = textReader.readLine();
@@ -53,7 +55,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
       }
       twoDimLatency = new float[cloudNames.size()][cloudNames.size()];
 
-		    //read rest of the lines
+      //read rest of the lines
       //Format:
       //  0,10,20
       // 10, 0, 5
@@ -76,8 +78,16 @@ public class LatencyCloudsInfo extends CloudsInfo {
     }
   }
 
+  public List<String> getCloudNames() {
+    if (cloudNames == null) {
+      init();
+    }
+
+    return (List<String>) this.cloudNames.clone();
+  }
+
   @Override
-  public float quality(String cloudName1, String cloudName2) {
+  public float getLatency(String cloudName1, String cloudName2) {
     if (cloudNames.contains(cloudName1) && cloudNames.contains(cloudName2)) {
       int idxC1 = cloudNames.indexOf(cloudName1);
       int idxC2 = cloudNames.indexOf(cloudName2);
@@ -92,7 +102,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
     return bestCloud(Type.Average, new HashSet<String>(cloudNames), new HashSet<String>(cloudNames));
   }
 
-  public String bestCloud(LatencyCloudsInfo.Type type, Set<String> participatedClouds, Set<String> dependencies) {
+  public String bestCloud(FileBasedCloudsInfo.Type type, Set<String> participatedClouds, Set<String> dependencies) {
 
     if (type == Type.MinMax) {
       return minMaxLatency(participatedClouds, dependencies);
@@ -116,7 +126,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
         continue;
       }
 
-			//Make sure the chosen cloud is different from their dependencies
+      //Make sure the chosen cloud is different from their dependencies
       //if(cloudDependencies.contains(cloud))
       //	continue;
       for (String dependency : cloudDependencies) {
@@ -149,7 +159,7 @@ public class LatencyCloudsInfo extends CloudsInfo {
     for (String cloud : cloudNameList) {
       float avgLatency = 0;
 
-			//Make sure the chosen cloud is different from their dependencies
+      //Make sure the chosen cloud is different from their dependencies
       //if(cloudDependencies.contains(cloud))
       //	continue;
       for (String dependency : cloudDependencies) {

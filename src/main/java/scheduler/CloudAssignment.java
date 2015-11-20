@@ -1,4 +1,4 @@
-package core;
+package scheduler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,16 +6,16 @@ import java.util.List;
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.WorkerSlot;
 
-public class Cloud {
+public class CloudAssignment {
 
-  String name;
-  List<SupervisorDetails> supervisors;
-  List<WorkerSlot> workers;
-  List<WorkerSlot> selectedWorkers;
+  private final String name;
+  private final List<SupervisorDetails> supervisors;
+  private final List<WorkerSlot> workers;
+  private final List<WorkerSlot> selectedWorkers;
 
-  List<Integer> tasks;
+  private final List<Integer> tasks;
 
-  public Cloud(String n) {
+  public CloudAssignment(String n) {
     name = n;
 
     supervisors = new ArrayList<SupervisorDetails>();

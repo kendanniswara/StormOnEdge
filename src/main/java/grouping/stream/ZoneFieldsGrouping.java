@@ -1,4 +1,4 @@
-package zoneGrouping;
+package grouping.stream;
 
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.task.WorkerTopologyContext;

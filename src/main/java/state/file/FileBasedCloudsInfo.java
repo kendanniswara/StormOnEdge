@@ -12,13 +12,12 @@ import state.CloudsInfo;
 
 public class FileBasedCloudsInfo implements CloudsInfo {
 
-  private final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
+  private final String CONF_cloudLocatorKey = "geoAwareScheduler.in-CloudInfo";
   private float[][] twoDimLatency;
   private final Map storm_config;
   private LinkedList<String> cloudNames;
 
   public enum Type {
-
     MinMax,
     Average
   }
@@ -86,7 +85,6 @@ public class FileBasedCloudsInfo implements CloudsInfo {
     return (List<String>) this.cloudNames.clone();
   }
 
-  @Override
   public float getLatency(String cloudName1, String cloudName2) {
     if (cloudNames.contains(cloudName1) && cloudNames.contains(cloudName2)) {
       int idxC1 = cloudNames.indexOf(cloudName1);
@@ -97,7 +95,6 @@ public class FileBasedCloudsInfo implements CloudsInfo {
     }
   }
 
-  @Override
   public String bestCloud() {
     return bestCloud(Type.Average, new HashSet<String>(cloudNames), new HashSet<String>(cloudNames));
   }

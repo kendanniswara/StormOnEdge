@@ -14,7 +14,7 @@ public class FileSourceInfo implements SourceInfo {
 
   private HashMap<String, ArrayList<String>> spoutCloudsPair = new HashMap<String, ArrayList<String>>();
   private final Map storm_config;
-  final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
+  final String CONF_sourceCloudKey = "geoAwareScheduler.in-SourceInfo";
 
   public FileSourceInfo(Map conf) throws FileNotFoundException {
     storm_config = conf;
@@ -48,7 +48,6 @@ public class FileSourceInfo implements SourceInfo {
 
   }
 
-  @Override
   public ArrayList<String> getCloudLocations(String spoutName) {
     if (spoutCloudsPair.containsKey(spoutName)) {
       return spoutCloudsPair.get(spoutName);

@@ -57,13 +57,14 @@ public class GeoAwareScheduler implements IScheduler {
 	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
   //String schedulerResultFile = "/home/kend/SchedulerResult.csv";
   //String pairSupervisorTaskFile = "/home/kend/fromSICSCloud/PairSupervisorTasks.txt";
+
   @SuppressWarnings("rawtypes")
   public void prepare(Map conf) {
     //Retrieve data from storm.yaml config file
     storm_config = conf;
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "ConstantConditions"})
   public void schedule(Topologies topologies, Cluster cluster) {
 
     System.out.println("NetworkAwareGroupScheduler: begin scheduling");
@@ -92,7 +93,7 @@ public class GeoAwareScheduler implements IScheduler {
 
     System.out.println("Initializing the cloud quality information");
     try {
-      // TODO: based on the configurations, should instanciate the right implementations, e.g., filebased, remote or etc.
+      // TODO: based on the configurations, should instantiate the right implementations, e.g., filebased, remote or etc.
       cloudInfo = new FileBasedCloudsInfo(storm_config);
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -387,7 +388,7 @@ public class GeoAwareScheduler implements IScheduler {
 				//Create a file pair of CloudName and tasks assigned to this cloud
         //This file is needed for zoneGrouping
         //Connector can be modified by any means: Zookeeper, oracle, etc
-        // TODO: Based on the configuration decidec what type of zone grouping to use.
+        // TODO: Based on the configuration decide what type of zone grouping to use.
         ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
         zgConnector.addInfo(clouds);
         zgConnector.writeInfo();
@@ -424,18 +425,18 @@ public class GeoAwareScheduler implements IScheduler {
           endidx = executors.size() - 1;
         }
 
-        List<ExecutorDetails> subexecutors = executors.subList(startidx, endidx);
+        List<ExecutorDetails> subExecutors = executors.subList(startidx, endidx);
         List<WorkerSlot> workers = c.getSelectedWorkers();
 
-        System.out.println("---" + c.getName() + "\n" + "-----subexecutors:" + subexecutors);
+        System.out.println("---" + c.getName() + "\n" + "-----subExecutors:" + subExecutors);
 
         if (workers == null || workers.isEmpty()) {
           System.out.println(localGroup.name + ": " + c.getName() + ": No workers");
         } else {
-          deployExecutorToWorkers(workers, subexecutors, executorWorkerMap);
+          deployExecutorToWorkers(workers, subExecutors, executorWorkerMap);
           executorCloudMap.add(taskName, c.getName());
 
-          for (ExecutorDetails ex : subexecutors) {
+          for (ExecutorDetails ex : subExecutors) {
             c.addTask(ex.getStartTask());
           }
         }
@@ -449,7 +450,7 @@ public class GeoAwareScheduler implements IScheduler {
     Iterator<WorkerSlot> workerIterator = cloudWorkers.iterator();
     Iterator<ExecutorDetails> executorIterator = executors.iterator();
 
-    	//if executors >= workers, do simple round robin
+    //if executors >= workers, do simple round robin
     //for all executors A to all supervisors B
     if (executors.size() >= cloudWorkers.size()) {
       while (executorIterator.hasNext() && workerIterator.hasNext()) {

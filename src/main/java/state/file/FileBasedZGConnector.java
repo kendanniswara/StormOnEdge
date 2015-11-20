@@ -13,7 +13,7 @@ import state.ZGConnector;
 
 public class FileBasedZGConnector implements ZGConnector {
 
-  final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
+  final String CONF_ZoneGroupingInput = "geoAwareScheduler.out-ZGConnector";
   private final MultiMap tasksByCloudName = new MultiMap();
 
   @SuppressWarnings("rawtypes")
@@ -29,12 +29,10 @@ public class FileBasedZGConnector implements ZGConnector {
     }
   }
 
-  @Override
   public void writeInfo() {
     writeInfoToFile();
   }
 
-  @Override
   public MultiMap readInfo() {
     return readInfoFromStormConf();
   }
@@ -105,7 +103,6 @@ public class FileBasedZGConnector implements ZGConnector {
     }
   }
 
-  @Override
   public void addInfo(HashMap<String, CloudAssignment> clouds) {
 
     for (CloudAssignment c : clouds.values()) {

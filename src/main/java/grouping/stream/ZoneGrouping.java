@@ -10,8 +10,8 @@ import org.mortbay.util.MultiMap;
 import backtype.storm.generated.GlobalStreamId;
 import backtype.storm.grouping.CustomStreamGrouping;
 import backtype.storm.task.WorkerTopologyContext;
-import state.file.FileBasedZGConnector;
-import state.ZGConnector;
+import state.ZGState.FileBasedZGConnector;
+import state.ZGState.ZGConnector;
 
 public abstract class ZoneGrouping implements CustomStreamGrouping {
 
@@ -27,7 +27,9 @@ public abstract class ZoneGrouping implements CustomStreamGrouping {
   @SuppressWarnings("unchecked")
   public void prepare(WorkerTopologyContext context, GlobalStreamId stream, List<Integer> targetTasks) {
 
-    config.put("geoScheduler.out-ZoneGrouping", "data/Result-ZoneGrouping.txt"); //hardcoded
+    // TODO: Based on the configuration decide what type of zone grouping to use.
+    config.put("geoAwareScheduler.out-ZGConnector", "/home/ken/stormFile/Result-ZoneGrouping.txt"); //hardcoded
+    //config.put("geoAwareScheduler.out-ZGConnector", "http://telolets.morpheus.feralhosting.com/work/Result-ZoneGrouping.txt"); //hardcoded
     ZGConnector zgConnector = new FileBasedZGConnector(config);
     supervisorTaskMap = zgConnector.readInfo();
     taskSupNameMap = convertKeyValue(supervisorTaskMap);

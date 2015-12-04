@@ -3,9 +3,9 @@ package scheduler;
 import grouping.topology.LocalTaskGroup;
 import grouping.topology.TaskGroup;
 import grouping.topology.GlobalTaskGroup;
-import state.file.FileBasedZGConnector;
-import state.file.FileBasedCloudsInfo;
-import state.file.FileSourceInfo;
+import state.ZGState.FileBasedZGConnector;
+import state.CloudState.FileBasedCloudsInfo;
+import state.SourceState.FileSourceInfo;
 import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
@@ -35,9 +35,9 @@ import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
-import state.CloudsInfo;
-import state.SourceInfo;
-import state.ZGConnector;
+import state.CloudState.CloudsInfo;
+import state.SourceState.SourceInfo;
+import state.ZGState.ZGConnector;
 
 
 public class GeoAwareScheduler implements IScheduler {
@@ -51,7 +51,7 @@ public class GeoAwareScheduler implements IScheduler {
   final String ackerBolt = "__acker";
 	//final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
   //final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
-  final String CONF_schedulerResult = "geoScheduler.out-SchedulerResult";
+  final String CONF_schedulerResult = "geoAwareScheduler.out-SchedulerResult";
 	//final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 
 	//String taskGroupListFile = "/home/kend/fromSICSCloud/Scheduler-GroupList.txt";
@@ -77,6 +77,7 @@ public class GeoAwareScheduler implements IScheduler {
 
     System.out.println("Initializing the data sources information");
     try {
+      // TODO: based on the configurations, should instantiate the right implementations, e.g., filebased, remote or etc.
       sourceInformation = new FileSourceInfo(storm_config);
 
     } catch (Exception e) {

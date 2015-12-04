@@ -19,6 +19,7 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.topology.base.BaseRichSpout;
+import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import grouping.stream.ZoneShuffleGrouping;
 import org.mockito.Mockito;
 
 /**
@@ -34,9 +36,9 @@ import org.mockito.Mockito;
  */
 public class GeoAwareSchedulerTest {
 
-  private final int PORT = 6700;
+  private final int PORT = 6701;
 
-  public GeoAwareSchedulerTest() {
+    public GeoAwareSchedulerTest() {
   }
 
   /**
@@ -68,10 +70,11 @@ public class GeoAwareSchedulerTest {
   private Map<String, Object> dummyStormCONF() {
     Map<String, Object> config = new HashMap<String, Object>();
 
-    config.put("geoScheduler.sourceCloudList", "data/Test-SpoutCloudsPair.txt");
-    config.put("geoScheduler.cloudInformation", "data/Scheduler-LatencyMatrix.txt");
-    config.put("geoScheduler.out-SchedulerResult", "data/Result-Scheduler.txt");
-    config.put("geoScheduler.out-ZoneGrouping", "data/Result-ZoneGrouping.txt");
+    //config.put("geoAwareScheduler.in-SourceInfo", "data/Test-SpoutCloudsPair.txt");
+    config.put("geoAwareScheduler.in-SourceInfo", "data/Scheduler-SpoutCloudsPair.txt");
+    config.put("geoAwareScheduler.in-CloudInfo", "data/Scheduler-LatencyMatrix.txt");
+    config.put("geoAwareScheduler.out-SchedulerResult", "data/Result-Scheduler.txt");
+    config.put("geoAwareScheduler.out-ZGConnector", "data/Result-ZoneGrouping.txt");
 
     return config;
   }
@@ -138,11 +141,33 @@ public class GeoAwareSchedulerTest {
   private TopologyBuilder getSampleTopologyBuilder() {
     TopologyBuilder builder = new TopologyBuilder();
 
-//    	builder.setSpout("spout1", Mockito.mock(IRichSpout.class, Mockito.withSettings().serializable()),4).addConfiguration("group-name", "Local1");
-//    	builder.setBolt("Bolt1", Mockito.mock(IBasicBolt.class, Mockito.withSettings().serializable()),4).shuffleGrouping("spout1").addConfiguration("group-name", "Local1");
-    builder.setSpout("Spout1", new ASpout(), 8).addConfiguration("group-name", "Local1");
-    builder.setBolt("Bolt1", new ABolt(), 4).shuffleGrouping("spout1").addConfiguration("group-name", "Local1");
-    builder.setBolt("Bolt2", new ABolt(), 4).shuffleGrouping("Bolt1").addConfiguration("group-name", "Global1");
+//    builder.setSpout("Spout1", new ASpout(), 8).addConfiguration("group-name", "Local1");
+//    builder.setBolt("Bolt1", new ABolt(), 4).shuffleGrouping("spout1").addConfiguration("group-name", "Local1");
+//    builder.setBolt("Bolt2", new ABolt(), 4).shuffleGrouping("Bolt1").addConfiguration("group-name", "Global1");
+
+    int totalSpout = 2 * 5;
+    int totalLocalBolt = 2 * 5;
+    int totalLocalResultBolt = 5;
+    int totalGlobalBolt = 4;
+    int totalGlobalResultBolt = 1;
+
+    builder.setSpout("messageSpoutLocal1", new ASpout(), totalSpout).addConfiguration("group-name", "Local1");
+    builder.setBolt("messageBoltLocal1_1", new ABolt(), totalLocalBolt).customGrouping("messageSpoutLocal1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+    builder.setBolt("messageBoltLocal1_LocalResult", new ABolt(), totalLocalResultBolt).customGrouping("messageBoltLocal1_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local1");
+
+    builder.setSpout("messageSpoutLocal2", new ASpout(), totalSpout).addConfiguration("group-name", "Local2");
+    builder.setBolt("messageBoltLocal2_1", new ABolt(), totalLocalBolt).customGrouping("messageSpoutLocal2", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+    builder.setBolt("messageBoltLocal2_LocalResult", new ABolt(), totalLocalResultBolt).customGrouping("messageBoltLocal2_1", new ZoneShuffleGrouping()).addConfiguration("group-name", "Local2");
+
+    builder.setBolt("messageBoltGlobal1_1A", new ABolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal1_1").addConfiguration("group-name", "Global1");
+    builder.setBolt("messageBoltGlobal1_1B", new ABolt(), totalGlobalBolt).shuffleGrouping("messageBoltLocal2_1").addConfiguration("group-name", "Global1");
+    builder.setBolt("messageBoltGlobal1_FG", new ABolt(), 2)
+            .fieldsGrouping("messageBoltGlobal1_1A", new Fields("fieldValue"))
+            .fieldsGrouping("messageBoltGlobal1_1B", new Fields("fieldValue"))
+            .addConfiguration("group-name", "Global1");
+    builder.setBolt("messageBoltGlobal1_GlobalResult", new ABolt(), totalGlobalResultBolt)
+            .shuffleGrouping("messageBoltGlobal1_FG")
+            .addConfiguration("group-name", "Global1");
 
     return builder;
   }

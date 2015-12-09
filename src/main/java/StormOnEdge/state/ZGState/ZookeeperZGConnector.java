@@ -72,7 +72,7 @@ public class ZookeeperZGConnector extends ZGConnector {
 
         System.out.print("zkConnector : " + new String(data));
 
-        String[] arrayData = new String(data).split("/n");
+        String[] arrayData = new String(data).split("\\r?\\n");
 
         for (int idx = 0; idx < arrayData.length; idx++) {
 

@@ -1,8 +1,7 @@
-package state.CloudState;
+package StormOnEdge.state.CloudState;
 
 import java.util.List;
 import java.util.Set;
-import state.CloudState.FileBasedCloudsInfo;
 
 public interface CloudsInfo {
 

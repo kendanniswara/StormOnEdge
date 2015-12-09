@@ -1,19 +1,18 @@
-package state.ZGState;
+package StormOnEdge.state.ZGState;
 
-import scheduler.CloudAssignment;
+import StormOnEdge.scheduler.CloudAssignment;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.mortbay.util.MultiMap;
 
-public class FileBasedZGConnector implements ZGConnector {
+@SuppressWarnings("Duplicates")
+public class FileBasedZGConnector extends ZGConnector {
 
   final String CONF_ZoneGroupingInput = "geoAwareScheduler.out-ZGConnector";
-  private final MultiMap tasksByCloudName = new MultiMap();
 
   @SuppressWarnings("rawtypes")
   private final Map storm_conf;
@@ -102,17 +101,6 @@ public class FileBasedZGConnector implements ZGConnector {
     }
   }
 
-  public void addInfo(HashMap<String, CloudAssignment> clouds) {
 
-    for (CloudAssignment c : clouds.values()) {
-      String cloudName = (String) c.getName() + ";";
-
-      if (!c.getTasks().isEmpty()) {
-        for (Integer t : c.getTasks()) {
-          tasksByCloudName.add(cloudName, t);
-        }
-      }
-    }
-  }
 
 }

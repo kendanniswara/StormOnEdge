@@ -1,4 +1,4 @@
-package state.SourceState;
+package StormOnEdge.state.SourceState;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,8 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-
-import state.SourceState.SourceInfo;
 
 public class FileSourceInfo implements SourceInfo {
 

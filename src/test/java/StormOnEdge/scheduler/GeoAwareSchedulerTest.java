@@ -46,24 +46,22 @@ public class GeoAwareSchedulerTest {
    */
   @org.junit.Test
   public void testSchedule() {
-    Cluster cluster = createCluster(); // GeoAwareScheduler StormOnEdge.scheduler = new GeoAwareScheduler();
-
-    String tName = "t1";
-    Topologies topologies = createTopologies(tName);
-    GeoAwareScheduler lg = new GeoAwareScheduler();
-
-    Map<String, Object> conf = dummyStormCONF();
-
-//        es.prepare(conf);
-//        es.schedule(topologies, cluster);
-    lg.prepare(conf);
-    lg.schedule(topologies, cluster);
-
-    Map<String, SchedulerAssignment> assignments = cluster.getAssignments();
-    //assert assignments.size() == 1;
-    Map<ExecutorDetails, WorkerSlot> assignment = assignments.get(tName).getExecutorToSlot();
-    System.out.println(assignment.toString());
-        //assert assignment.size() == 8;
+//    Cluster cluster = createCluster(); // GeoAwareScheduler StormOnEdge.scheduler = new GeoAwareScheduler();
+//
+//    String tName = "t1";
+//    Topologies topologies = createTopologies(tName);
+//    GeoAwareScheduler lg = new GeoAwareScheduler();
+//
+//    Map<String, Object> conf = dummyStormCONF();
+//
+//    lg.prepare(conf);
+//    lg.schedule(topologies, cluster);
+//
+//    Map<String, SchedulerAssignment> assignments = cluster.getAssignments();
+//    //assert assignments.size() == 1;
+//    Map<ExecutorDetails, WorkerSlot> assignment = assignments.get(tName).getExecutorToSlot();
+//    System.out.println(assignment.toString());
+//        //assert assignment.size() == 8;
     // TODO: Here, asserts come.
   }
 

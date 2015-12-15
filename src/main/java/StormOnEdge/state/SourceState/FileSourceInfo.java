@@ -1,9 +1,6 @@
 package StormOnEdge.state.SourceState;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,39 +9,35 @@ import java.util.Set;
 public class FileSourceInfo implements SourceInfo {
 
   private HashMap<String, ArrayList<String>> spoutCloudsPair = new HashMap<String, ArrayList<String>>();
-  private final Map storm_config;
-  final String CONF_sourceCloudKey = "geoAwareScheduler.in-SourceInfo";
+  private Map storm_config;
+  private String fileSourceKey;
 
-  public FileSourceInfo(Map conf) throws FileNotFoundException {
+  public FileSourceInfo(String key, Map conf) throws IOException, FileNotFoundException {
+    fileSourceKey = key;
     storm_config = conf;
-    String inputPath = storm_config.get(CONF_sourceCloudKey).toString();
+    String inputPath = storm_config.get(fileSourceKey).toString();
 
-    if (inputPath != null || checkFileAvailablity(inputPath)) {
-      try {
-        String line;
-        FileReader pairDataFile = new FileReader(inputPath);
-        BufferedReader textReader = new BufferedReader(pairDataFile);
+    if (inputPath != null || checkFileAvailability(inputPath)) {
+
+      String line;
+      FileReader pairDataFile = new FileReader(inputPath);
+      BufferedReader textReader = new BufferedReader(pairDataFile);
+
+      line = textReader.readLine();
+      while (line != null && !line.equals("")) {
+        //Format
+        //SpoutID;cloudA,cloudB,cloudC
+        String[] pairString = line.split(";");
+        String spoutName = pairString[0];
+        String[] cloudList = pairString[1].split(",");
+        addCloudLocations(spoutName, cloudList);
 
         line = textReader.readLine();
-        while (line != null && !line.equals("")) {
-          //Format
-          //SpoutID;cloudA,cloudB,cloudC
-          //System.out.println("~~Read from file: " + line);
-          String[] pairString = line.split(";");
-          String spoutName = pairString[0];
-          String[] cloudList = pairString[1].split(",");
-          addCloudLocations(spoutName, cloudList);
-
-          line = textReader.readLine();
-        }
-        textReader.close();
-      } catch (Exception e) {
-        System.out.println(e.getMessage());
       }
-    } else {
-      throw new FileNotFoundException();
+      textReader.close();
     }
-
+    else
+      throw new FileNotFoundException();
   }
 
   public ArrayList<String> getCloudLocations(String spoutName) {
@@ -55,7 +48,7 @@ public class FileSourceInfo implements SourceInfo {
     }
   }
 
-  private boolean checkFileAvailablity(String path) {
+  private boolean checkFileAvailability(String path) {
     File file = new File(path);
     if (file.exists()) {
       return true;

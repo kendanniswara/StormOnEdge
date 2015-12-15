@@ -3,17 +3,14 @@ package StormOnEdge.state.CloudState;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class FileBasedCloudsInfo implements CloudsInfo {
 
-  private final String CONF_cloudLocatorKey = "geoAwareScheduler.in-CloudInfo";
+  private Map storm_config;
+  private String fileCloudKey;
   private float[][] twoDimLatency;
-  private final Map storm_config;
+
   private LinkedList<String> cloudNames;
 
   public enum Type {
@@ -21,7 +18,8 @@ public class FileBasedCloudsInfo implements CloudsInfo {
     Average
   }
 
-  public FileBasedCloudsInfo(Map conf) {
+  public FileBasedCloudsInfo(String key, Map conf) {
+    fileCloudKey = key;
     storm_config = conf;
     init();
   }
@@ -32,7 +30,7 @@ public class FileBasedCloudsInfo implements CloudsInfo {
 
   private void init() {
     cloudNames = new LinkedList<String>();
-    String inputPath = storm_config.get(CONF_cloudLocatorKey).toString();
+    String inputPath = storm_config.get(fileCloudKey).toString();
 
     //Reading the information from file
     FileReader dataFile;
@@ -48,9 +46,7 @@ public class FileBasedCloudsInfo implements CloudsInfo {
       //cloudA,cloudB,cloudC
       line = textReader.readLine();
       String[] cloudList = line.split(",");
-      for (String cloud : cloudList) {
-        cloudNames.add(cloud);
-      }
+      cloudNames.addAll(Arrays.asList(cloudList));
       twoDimLatency = new float[cloudNames.size()][cloudNames.size()];
 
       //read rest of the lines

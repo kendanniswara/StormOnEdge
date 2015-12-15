@@ -27,11 +27,12 @@ public abstract class ZoneGrouping implements CustomStreamGrouping {
   @SuppressWarnings("unchecked")
   public void prepare(WorkerTopologyContext context, GlobalStreamId stream, List<Integer> targetTasks) {
 
-    // TODO: Based on the configuration decide what type of zone StormOnEdge.grouping to use.
+    // TODO: Based on the configuration decide what type of ZG Connector to use.
     //config.put("geoAwareScheduler.out-ZGConnector", "/home/ken/stormFile/Result-ZoneGrouping.txt"); //hardcoded
     //config.put("geoAwareScheduler.out-ZGConnector", "http://telolets.morpheus.feralhosting.com/work/Result-ZoneGrouping.txt"); //hardcoded
     //ZGConnector zgConnector = new FileBasedZGConnector(config);
-    ZGConnector zgConnector = new ZookeeperZGConnector();
+    ZGConnector zgConnector = new ZookeeperZGConnector(context.getStormId());
+
     supervisorTaskMap = zgConnector.readInfo();
     taskSupNameMap = convertKeyValue(supervisorTaskMap);
 
@@ -85,7 +86,7 @@ public abstract class ZoneGrouping implements CustomStreamGrouping {
 
     for (Object cloudName : supervisorTaskMap2.keySet()) {
       @SuppressWarnings("unchecked")
-      ArrayList<Integer> taskIDs = (ArrayList<Integer>) supervisorTaskMap2.get(cloudName);
+      ArrayList<Integer> taskIDs = (ArrayList<Integer>) supervisorTaskMap2.getValues(cloudName);
       String cloudString = cloudName.toString();
 
       for (Integer t : taskIDs) {

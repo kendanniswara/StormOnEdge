@@ -49,8 +49,8 @@ public class GeoAwareScheduler implements IScheduler {
   Map storm_config;
 
   final String ackerBolt = "__acker";
-	//final String CONF_sourceCloudKey = "geoScheduler.sourceCloudList";
-  //final String CONF_cloudLocatorKey = "geoScheduler.cloudInformation";
+	final String CONF_sourceCloudKey = "geoAwareScheduler.in-SourceInfo";
+  final String CONF_cloudLocatorKey = "geoAwareScheduler.in-CloudInfo";
   final String CONF_schedulerResult = "geoAwareScheduler.out-SchedulerResult";
 	//final String CONF_ZoneGroupingInput = "geoScheduler.out-ZoneGrouping";
 
@@ -72,37 +72,34 @@ public class GeoAwareScheduler implements IScheduler {
     List<SupervisorDetails> supervisors;
     HashMap<String, CloudAssignment> clouds;
 
-    LinkedHashMap<String, LocalTaskGroup> localTaskList;
-    LinkedHashMap<String, GlobalTaskGroup> globalTaskList;
-
-    System.out.println("Initializing the data sources information");
+    //
+    System.out.println("Initializing the Spout sources information");
     try {
       // TODO: based on the configurations, should instantiate the right implementations, e.g., filebased, remote or etc.
-      sourceInformation = new FileSourceInfo(storm_config);
+      sourceInformation = new FileSourceInfo(CONF_sourceCloudKey, storm_config);
+
+      if (sourceInformation.getSpoutNames().size() <= 0)
+        throw new Exception("no spout with source information, StormOnEdge.scheduler stopped");
 
     } catch (Exception e) {
       System.out.println(e.getMessage());
       System.out.println("Exception when reading the source information file. Scheduler stopped");
       return;
     }
+    System.out.println("Spout sources OK");
 
-    if (sourceInformation.getSpoutNames().size() <= 0) {
-      System.out.println("no spout with source information, StormOnEdge.scheduler stopped");
-      return;
-    }
-    System.out.println("OK");
-
+    //
     System.out.println("Initializing the cloud quality information");
     try {
       // TODO: based on the configurations, should instantiate the right implementations, e.g., filebased, remote or etc.
-      cloudInfo = new FileBasedCloudsInfo(storm_config);
+      cloudInfo = new FileBasedCloudsInfo(CONF_cloudLocatorKey, storm_config);
     } catch (Exception e) {
       System.out.println(e.getMessage());
-      System.out.println("Exception when loading the Cloud quality. Scheduler expected to run without this information");
-      System.out.println("Scheduler stopped");
+      System.out.println("Exception when loading the Cloud quality. Scheduler stopped");
       return;
     }
-    System.out.println("OK");
+    System.out.println("cloud quality information OK");
+
 
     System.out.println("Categorizing the supervisor based on cloud names");
     supervisors = new ArrayList<SupervisorDetails>(cluster.getSupervisors().values());
@@ -133,10 +130,14 @@ public class GeoAwareScheduler implements IScheduler {
       System.out.println("Available Workers: " + C.getWorkers() + "\n");
     }
 
+
+    //Start Scheduling
     for (TopologyDetails topology : topologies.getTopologies()) {
 
-      localTaskList = new LinkedHashMap<String, LocalTaskGroup>();
-      globalTaskList = new LinkedHashMap<String, GlobalTaskGroup>();
+      System.out.println("Topology name : " + topology.getName());
+
+      LinkedHashMap<String, LocalTaskGroup> localTaskList = new LinkedHashMap<String, LocalTaskGroup>();
+      LinkedHashMap<String, GlobalTaskGroup> globalTaskList = new LinkedHashMap<String, GlobalTaskGroup>();
 
       if (!cluster.needsScheduling(topology) || cluster.getNeedsSchedulingComponentToExecutors(topology).isEmpty()) {
         System.out.println("This topology doesn't need scheduling.");
@@ -273,11 +274,8 @@ public class GeoAwareScheduler implements IScheduler {
 
             Set<String> cloudDependencies = new HashSet<String>();
             for (String dependentExecutors : globalTask.boltDependencies) {
-              if (executorCloudMap.getValues(dependentExecutors) == null) {
-                continue;
-              } else {
+              if (executorCloudMap.getValues(dependentExecutors) != null)
                 cloudDependencies.addAll((List<String>) executorCloudMap.getValues(dependentExecutors));
-              }
             }
 
             //Set<String> cloudSet = supervisorsByCloudName.keySet();
@@ -386,12 +384,14 @@ public class GeoAwareScheduler implements IScheduler {
           System.out.println(e.getMessage());
         }
 
-				//Create a file pair of CloudName and tasks assigned to this cloud
-        //This file is needed for zoneGrouping
-        //Connector can be modified by any means: Zookeeper, oracle, etc
-        // TODO: Based on the configuration decide what type of zone StormOnEdge.grouping to use.
+        /*
+				* Create a file pair of CloudName and tasks assigned to this cloud
+        * This file is needed for zoneGrouping
+        * Connector can be modified by any means: Zookeeper, oracle, etc
+        */
+        // TODO: Based on the configuration decide what type of ZGConnector to use.
         //ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
-        ZGConnector zgConnector = new ZookeeperZGConnector();
+        ZGConnector zgConnector = new ZookeeperZGConnector(topology.getId());
         zgConnector.addInfo(clouds);
         zgConnector.writeInfo();
       }

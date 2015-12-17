@@ -1,15 +1,14 @@
 package StormOnEdge.state.ZGState;
 
-import org.apache.curator.RetryPolicy;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
+import backtype.storm.Config;
+import org.apache.storm.curator.framework.CuratorFramework;
+import org.apache.storm.curator.framework.imps.CuratorFrameworkState;
 import org.mortbay.util.MultiMap;
+import backtype.storm.utils.Utils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Created by ken on 12/7/2015.
@@ -24,43 +23,24 @@ import java.util.ArrayList;
 @SuppressWarnings("Duplicates")
 public class ZookeeperZGConnector extends ZGConnector {
 
-  private final String zkIPloc = "apache-storm-0.9.3/conf/storm.yaml";
-
   private String stormID;
-  private String connString = "localhost:2181"; //default ZK location
-  private String zkPath = "/storm/ZKConnector";
+
+  private List<String> zooHosts;
+  private Object zkPort;
+  private String zkRoot = "/storm/ZKConnector";
 
   private CuratorFramework client;
+  private Map storm_conf;
 
-  public ZookeeperZGConnector(String id) {
+  @SuppressWarnings("unchecked")
+  public ZookeeperZGConnector(String iD) {
 
-    stormID = id;
-    zkPath = zkPath + "-" + stormID;
+    stormID = iD;
+    storm_conf = Utils.readStormConfig();
 
-    BufferedReader textReader;
-    String line;
-
-    try {
-      File file = new File(zkIPloc);
-      System.out.println("File absolute Path: " + file.getAbsolutePath());
-
-      textReader = new BufferedReader(new FileReader(file));
-      line = textReader.readLine();
-
-      while(line != null) {
-        if(line.contains("storm.zookeeper.servers"))
-        {
-          String zooLine = textReader.readLine();
-          String[] split = zooLine.split("\"");
-          connString = split[1] + ":2181";
-          break;
-        }
-
-        line = textReader.readLine();
-      }
-
-    }catch(Exception e) {e.printStackTrace();}
-
+    zooHosts = (List<String>) storm_conf.get(Config.STORM_ZOOKEEPER_SERVERS);
+    zkPort = storm_conf.get(Config.STORM_ZOOKEEPER_PORT);
+    zkRoot = zkRoot + "-" + stormID;
   }
 
   public void writeInfo() {
@@ -86,12 +66,12 @@ public class ZookeeperZGConnector extends ZGConnector {
     try {
       resetZKConnection();
 
-      if (client.checkExists().forPath(zkPath) == null)
-        client.create().forPath(zkPath);
+      if (client.checkExists().forPath(zkRoot) == null)
+        client.create().forPath(zkRoot);
 
-      client.setData().forPath(zkPath, taskStringBuilder.toString().getBytes());
+      client.setData().forPath(zkRoot, taskStringBuilder.toString().getBytes());
 //      if(result2 != null) {
-//        System.out.println("Write to " + zkPath + " complete");
+//        System.out.println("Write to " + zkRoot + " complete");
 //        System.out.println("length: " + result2.getDataLength());
 //      }
 
@@ -107,32 +87,31 @@ public class ZookeeperZGConnector extends ZGConnector {
       resetZKConnection();
 
       //block until ready
-      while(client.checkExists().forPath(zkPath) == null) {
+      while(client.getState() != CuratorFrameworkState.STARTED
+              || client.checkExists().forPath(zkRoot) == null) {
         Thread.sleep(500);
         System.out.println("Waiting for ZK");
       }
 
-      if(client.checkExists().forPath(zkPath) != null) {
-        byte[] data = client.getData().forPath(zkPath);
+      byte[] data = client.getData().forPath(zkRoot);
 
-        String dataString = new String(data);
-        System.out.print("zkConnector : " + dataString);
+      String dataString = new String(data);
+      System.out.print("zkConnector : " + dataString);
 
-        if(!dataString.isEmpty()) {
+      if(!dataString.isEmpty()) {
 
-          String[] arrayData = dataString.split("\\r?\\n");
+        String[] arrayData = dataString.split("\\r?\\n");
 
-          //Format:
-          //cloudA;1,2,3,4,5
-          for (int idx = 0; idx < arrayData.length; idx++) {
-            String[] pairString = arrayData[idx].split(";");
-            if (pairString.length == 2) {
-              String key = pairString[0];
-              String[] taskString = pairString[1].split(",");
+        //Format:
+        //cloudA;1,2,3,4,5
+        for (int idx = 0; idx < arrayData.length; idx++) {
+          String[] pairString = arrayData[idx].split(";");
+          if (pairString.length == 2) {
+            String key = pairString[0];
+            String[] taskString = pairString[1].split(",");
 
-              for (int ii = 0; ii < taskString.length; ii++)
-                tasksByCloudName.add(key, new Integer(taskString[ii]));
-            }
+            for (int ii = 0; ii < taskString.length; ii++)
+              tasksByCloudName.add(key, new Integer(taskString[ii]));
           }
         }
       }
@@ -145,9 +124,9 @@ public class ZookeeperZGConnector extends ZGConnector {
 
   private void resetZKConnection() {
 
-    RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-    client = CuratorFrameworkFactory.newClient(connString,retryPolicy);
-
+    //RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
+    client = Utils.newCurator(storm_conf,zooHosts,zkPort);
+    //client = CuratorFrameworkFactory.newClient(connString,retryPolicy);
     client.start();
   }
 

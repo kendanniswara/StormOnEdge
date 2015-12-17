@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import StormOnEdge.state.ZGState.FileBasedZGConnector;
+import backtype.storm.Config;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -40,6 +42,7 @@ import StormOnEdge.state.ZGState.ZGConnector;
 import StormOnEdge.state.ZGState.ZookeeperZGConnector;
 
 
+@SuppressWarnings("Duplicates")
 public class GeoAwareScheduler implements IScheduler {
 
   Random rand = new Random(System.currentTimeMillis());
@@ -318,7 +321,8 @@ public class GeoAwareScheduler implements IScheduler {
                   executorCloudMap.add(bolt, choosenCloud);
 
                   for (ExecutorDetails ex : executors) {
-                    c.addTask(ex.getStartTask());
+                    for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
+                      c.addTask(tID);
                   }
                 }
               }
@@ -334,7 +338,8 @@ public class GeoAwareScheduler implements IScheduler {
                   deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
 
                   for (ExecutorDetails ex : ackers) {
-                    c.addTask(ex.getStartTask());
+                    for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
+                      c.addTask(tID);
                   }
                 }
               }
@@ -390,7 +395,7 @@ public class GeoAwareScheduler implements IScheduler {
         * Connector can be modified by any means: Zookeeper, oracle, etc
         */
         // TODO: Based on the configuration decide what type of ZGConnector to use.
-        //ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
+//        ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
         ZGConnector zgConnector = new ZookeeperZGConnector(topology.getId());
         zgConnector.addInfo(clouds);
         zgConnector.writeInfo();
@@ -439,7 +444,8 @@ public class GeoAwareScheduler implements IScheduler {
           executorCloudMap.add(taskName, c.getName());
 
           for (ExecutorDetails ex : subExecutors) {
-            c.addTask(ex.getStartTask());
+            for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
+              c.addTask(tID);
           }
         }
 

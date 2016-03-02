@@ -5,6 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import StormOnEdge.state.ZGState.FileBasedZGConnector;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.mortbay.util.MultiMap;
 
 import backtype.storm.generated.GlobalStreamId;
@@ -14,6 +17,8 @@ import StormOnEdge.state.ZGState.ZGConnector;
 import StormOnEdge.state.ZGState.ZookeeperZGConnector;
 
 public abstract class ZoneGrouping implements CustomStreamGrouping {
+
+  private static final Log LOG = LogFactory.getLog(ZoneGrouping.class);
 
   private static final long serialVersionUID = 1L;
   protected Map<String, Object> config = new HashMap<String, Object>();
@@ -30,16 +35,25 @@ public abstract class ZoneGrouping implements CustomStreamGrouping {
     // TODO: Based on the configuration decide what type of ZG Connector to use.
     //config.put("geoAwareScheduler.out-ZGConnector", "/home/ken/stormFile/Result-ZoneGrouping.txt"); //hardcoded
     //config.put("geoAwareScheduler.out-ZGConnector", "http://telolets.morpheus.feralhosting.com/work/Result-ZoneGrouping.txt"); //hardcoded
-    //ZGConnector zgConnector = new FileBasedZGConnector(config);
+//    ZGConnector zgConnector = new FileBasedZGConnector(config);
     ZGConnector zgConnector = new ZookeeperZGConnector(context.getStormId());
 
     supervisorTaskMap = zgConnector.readInfo();
+    LOG.info("supervisorTaskMap: \n" + supervisorTaskMap.toString());
+
     taskSupNameMap = convertKeyValue(supervisorTaskMap);
+    LOG.info("taskSupNameMap: \n" + taskSupNameMap.toString());
 
     targetList = targetTasks;
 
     for (Integer source : context.getComponentTasks(stream.get_componentId())) {
-      taskResultList.put(source, findIntersections(targetTasks, (List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(source))));
+//      LOG.info("Source: " + source);
+      List<Integer> temp = (List<Integer>) supervisorTaskMap.get(taskSupNameMap.get(source));
+      if(temp == null || temp.isEmpty())
+        continue;
+      LOG.info("Source: " + source);
+      LOG.info("tempList: " + temp.toString());
+      taskResultList.put(source, findIntersections(targetTasks, temp));
     }
 
     /*
@@ -74,6 +88,7 @@ public abstract class ZoneGrouping implements CustomStreamGrouping {
     List<Integer> temp = new ArrayList<Integer>();
 
     for (Integer i : choosenTasks) {
+//      LOG.info("choosenTasks : " + i);
       if (fromSupervisor.contains(i)) {
         temp.add(i);
       }

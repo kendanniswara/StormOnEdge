@@ -8,5 +8,5 @@ public class LocalTaskGroup extends TaskGroup {
     super(Groupname);
   }
 
-  public LinkedHashMap<String, Integer> spoutsWithParInfo = new LinkedHashMap<String, Integer>();
+  public LinkedHashMap<String, Integer> spoutsWithCloudParallelizationInfo = new LinkedHashMap<String, Integer>();
 }

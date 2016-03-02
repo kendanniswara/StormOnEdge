@@ -1,48 +1,31 @@
 package StormOnEdge.scheduler;
 
+import StormOnEdge.grouping.topology.GlobalTaskGroup;
 import StormOnEdge.grouping.topology.LocalTaskGroup;
 import StormOnEdge.grouping.topology.TaskGroup;
-import StormOnEdge.grouping.topology.GlobalTaskGroup;
+import StormOnEdge.state.CloudState.CloudsInfo;
 import StormOnEdge.state.CloudState.FileBasedCloudsInfo;
 import StormOnEdge.state.SourceState.FileSourceInfo;
-import java.io.File;
-import java.io.FileWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
-
-import StormOnEdge.state.ZGState.FileBasedZGConnector;
+import StormOnEdge.state.SourceState.SourceInfo;
+import StormOnEdge.state.ZGState.ZGConnector;
+import StormOnEdge.state.ZGState.ZookeeperZGConnector;
+import backtype.storm.generated.Bolt;
+import backtype.storm.generated.GlobalStreamId;
+import backtype.storm.generated.SpoutSpec;
+import backtype.storm.generated.StormTopology;
+import backtype.storm.scheduler.*;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.mortbay.util.MultiMap;
 
-import backtype.storm.generated.Bolt;
-import backtype.storm.generated.GlobalStreamId;
-import backtype.storm.generated.SpoutSpec;
-import backtype.storm.generated.StormTopology;
-import backtype.storm.scheduler.Cluster;
-import backtype.storm.scheduler.EvenScheduler;
-import backtype.storm.scheduler.ExecutorDetails;
-import backtype.storm.scheduler.IScheduler;
-import backtype.storm.scheduler.SupervisorDetails;
-import backtype.storm.scheduler.Topologies;
-import backtype.storm.scheduler.TopologyDetails;
-import backtype.storm.scheduler.WorkerSlot;
-import StormOnEdge.state.CloudState.CloudsInfo;
-import StormOnEdge.state.SourceState.SourceInfo;
-import StormOnEdge.state.ZGState.ZGConnector;
-import StormOnEdge.state.ZGState.ZookeeperZGConnector;
+import java.io.File;
+import java.io.FileWriter;
+import java.util.*;
 
 
 @SuppressWarnings("Duplicates")
-public class GeoAwareScheduler implements IScheduler {
+public class GeoAwareDynamicScheduler implements IScheduler {
 
   Random rand = new Random(System.currentTimeMillis());
   JSONParser parser = new JSONParser();
@@ -141,8 +124,7 @@ public class GeoAwareScheduler implements IScheduler {
       LinkedHashMap<String, LocalTaskGroup> localTaskList = new LinkedHashMap<String, LocalTaskGroup>();
       LinkedHashMap<String, GlobalTaskGroup> globalTaskList = new LinkedHashMap<String, GlobalTaskGroup>();
 
-      System.out.println(cluster.getAvailableSlots());
-      if (!cluster.needsScheduling(topology) || cluster.getNeedsSchedulingComponentToExecutors(topology).isEmpty() || cluster.getAvailableSlots().isEmpty()) {
+      if (!cluster.needsScheduling(topology) || cluster.getNeedsSchedulingComponentToExecutors(topology).isEmpty()) {
         System.out.println("This topology doesn't need scheduling.");
       } else {
 
@@ -161,11 +143,6 @@ public class GeoAwareScheduler implements IScheduler {
           try {
             JSONObject conf = (JSONObject) parser.parse(spoutSpec.get_common().get_json_conf());
 
-            int taskCloudParallelization = 1; //default value, 1 Task on each cloud
-            if (conf.get("TaskPerCloud") != null) {
-              taskCloudParallelization = Integer.parseInt(conf.get("TaskPerCloud").toString());
-            }
-
             if (conf.get("group-name") != null) {
               String groupName = (String) conf.get("group-name");
               LocalTaskGroup schedulerGroup;
@@ -181,8 +158,7 @@ public class GeoAwareScheduler implements IScheduler {
               }
 
               if (schedulerGroup != null) {
-//                schedulerGroup.spoutsWithCloudParallelizationInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
-                schedulerGroup.spoutsWithCloudParallelizationInfo.put(name, taskCloudParallelization);
+                schedulerGroup.spoutsWithCloudParallelizationInfo.put(name, spoutSpec.get_common().get_parallelism_hint());
                 for (String cloudName : sourceInformation.getCloudLocations(name)) {
                   CloudAssignment c = clouds.get(cloudName);
                   schedulerGroup.taskGroupClouds.add(c);
@@ -208,11 +184,6 @@ public class GeoAwareScheduler implements IScheduler {
           try {
             JSONObject conf = (JSONObject) parser.parse(b.get_common().get_json_conf());
 
-            int taskCloudParallelization = 1; //default value, 1 Task on each cloud
-            if (conf.get("TaskPerCloud") != null) {
-              taskCloudParallelization = Integer.parseInt(conf.get("TaskPerCloud").toString());
-            }
-
             if (conf.get("group-name") != null) {
               String groupName = (String) conf.get("group-name");
               TaskGroup schedulerGroup;
@@ -231,8 +202,7 @@ public class GeoAwareScheduler implements IScheduler {
               }
 
               if (schedulerGroup != null) {
-//                schedulerGroup.boltsWithCloudParallelizationInfo.put(name, b.get_common().get_parallelism_hint());
-                schedulerGroup.boltsWithCloudParallelizationInfo.put(name, taskCloudParallelization);
+                schedulerGroup.boltsWithCloudParallelizationInfo.put(name, b.get_common().get_parallelism_hint());
 
                 for (GlobalStreamId streamId : inputStreams) {
                   System.out.println("--dependent to " + streamId.get_componentId());
@@ -261,12 +231,11 @@ public class GeoAwareScheduler implements IScheduler {
 
             for (Map.Entry<String, Integer> spout : localGroup.spoutsWithCloudParallelizationInfo.entrySet()) {
               String spoutName = spout.getKey();
-              int parHint = spout.getValue();
-              System.out.println("-" + spoutName + ": " + parHint);
+              int spoutParHint = spout.getValue();
+              System.out.println("-" + spoutName + ": " + spoutParHint);
 
               List<ExecutorDetails> executors = componentToExecutors.get(spoutName);
-//              localTaskGroupDeployment(localGroup, executors, spout, executorWorkerMap, executorCloudMap);
-              localTaskGroupDeployment2(localGroup, executors, spout, executorWorkerMap, executorCloudMap);
+              localTaskGroupDeployment(localGroup, executors, spout, executorWorkerMap, executorCloudMap);
             }
 
             for (Map.Entry<String, Integer> bolt : localGroup.boltsWithCloudParallelizationInfo.entrySet()) {
@@ -275,8 +244,7 @@ public class GeoAwareScheduler implements IScheduler {
               System.out.println("-" + boltName + ": " + parHint);
 
               List<ExecutorDetails> executors = componentToExecutors.get(boltName);
-//              localTaskGroupDeployment(localGroup, executors, bolt, executorWorkerMap, executorCloudMap);
-              localTaskGroupDeployment2(localGroup, executors, bolt, executorWorkerMap, executorCloudMap);
+              localTaskGroupDeployment(localGroup, executors, bolt, executorWorkerMap, executorCloudMap);
             }
 
           } catch (Exception e) {
@@ -298,21 +266,21 @@ public class GeoAwareScheduler implements IScheduler {
             //Set<String> cloudSet = supervisorsByCloudName.keySet();
             Set<String> cloudSet = clouds.keySet();
             System.out.println("-cloudDependencies: " + cloudDependencies);
-            String choosenCloud = cloudInfo.bestCloud(FileBasedCloudsInfo.Type.MinMax, cloudSet, cloudDependencies);
-						//String choosenCloud = "CloudMidA"; //hardcoded
+            String chosenCloud = cloudInfo.bestCloud(FileBasedCloudsInfo.Type.MinMax, cloudSet, cloudDependencies);
+						//String chosenCloud = "CloudMidA"; //hardcoded
 
-            if (choosenCloud == null) {
+            if (chosenCloud == null) {
               System.out.println("WARNING! no cloud chosen for this group!");
             } else {
-              System.out.println("-choosenCloud: " + choosenCloud);
+              System.out.println("-chosenCloud: " + chosenCloud);
             }
 
             CloudAssignment c;
 
-            if (!clouds.containsKey(choosenCloud)) {
-              System.out.println("WARNING! " + choosenCloud + " is not available!");
+            if (!clouds.containsKey(chosenCloud)) {
+              System.out.println("WARNING! " + chosenCloud + " is not available!");
             } else {
-              c = clouds.get(choosenCloud);
+              c = clouds.get(chosenCloud);
               globalTask.taskGroupClouds.add(c);
 
               for (String bolt : globalTask.boltsWithCloudParallelizationInfo.keySet()) {
@@ -329,14 +297,13 @@ public class GeoAwareScheduler implements IScheduler {
                 if (executors.size() == 0) {
                   System.out.println(globalTask.name + ": " + bolt + ": No executors");
                 } else if (workersInCloud.isEmpty()) {
-                  System.out.println(globalTask.name + ": " + choosenCloud + ": No workers");
+                  System.out.println(globalTask.name + ": " + chosenCloud + ": No workers");
                 } else {
                   deployExecutorToWorkers(workersInCloud, executors, executorWorkerMap);
-                  executorCloudMap.add(bolt, choosenCloud);
+                  executorCloudMap.add(bolt, chosenCloud);
 
                   for (ExecutorDetails ex : executors) {
-                    for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
-                      c.addTask(tID);
+                    c.addTask(ex.getStartTask());
                   }
                 }
               }
@@ -352,8 +319,7 @@ public class GeoAwareScheduler implements IScheduler {
                   deployExecutorToWorkers(workerAckers, ackers, executorWorkerMap);
 
                   for (ExecutorDetails ex : ackers) {
-                    for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
-                      c.addTask(tID);
+                    c.addTask(ex.getStartTask());
                   }
                 }
               }
@@ -409,7 +375,7 @@ public class GeoAwareScheduler implements IScheduler {
         * Connector can be modified by any means: Zookeeper, oracle, etc
         */
         // TODO: Based on the configuration decide what type of ZGConnector to use.
-//        ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
+        //ZGConnector zgConnector = new FileBasedZGConnector(storm_config);
         ZGConnector zgConnector = new ZookeeperZGConnector(topology.getId());
         zgConnector.addInfo(clouds);
         zgConnector.writeInfo();
@@ -428,17 +394,16 @@ public class GeoAwareScheduler implements IScheduler {
   }
 
   private void localTaskGroupDeployment(LocalTaskGroup localGroup,
-    List<ExecutorDetails> executors, Map.Entry<String, Integer> task,
+    List<ExecutorDetails> executors, Map.Entry<String, Integer> executorParallelism,
     MultiMap executorWorkerMap, MultiMap executorCloudMap) {
-    String taskName = task.getKey();
-    int taskParHint = task.getValue();
+    String executorName = executorParallelism.getKey();
+    int executorParHint = executorParallelism.getValue();
 
     if (executors == null || executors.isEmpty()) {
-      System.out.println(localGroup.name + ": " + taskName + ": No executors");
-    }
-    else {
+      System.out.println(localGroup.name + ": " + executorName + ": No executors");
+    } else {
       int cloudIndex = 0;
-      int executorPerCloud = taskParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
+      int executorPerCloud = executorParHint / localGroup.taskGroupClouds.size(); //for now, only work on even number between executors to workers
       for (CloudAssignment c : localGroup.taskGroupClouds) {
         int startidx = cloudIndex * executorPerCloud;
         int endidx = startidx + executorPerCloud;
@@ -456,53 +421,10 @@ public class GeoAwareScheduler implements IScheduler {
           System.out.println(localGroup.name + ": " + c.getName() + ": No workers");
         } else {
           deployExecutorToWorkers(workers, subExecutors, executorWorkerMap);
-          executorCloudMap.add(taskName, c.getName());
+          executorCloudMap.add(executorName, c.getName());
 
           for (ExecutorDetails ex : subExecutors) {
-            for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
-              c.addTask(tID);
-          }
-        }
-
-        cloudIndex++;
-      }
-    }
-  }
-
-  private void localTaskGroupDeployment2(LocalTaskGroup localGroup,
-                                        List<ExecutorDetails> executors, Map.Entry<String, Integer> task,
-                                        MultiMap executorWorkerMap, MultiMap executorCloudMap) {
-    String taskName = task.getKey();
-    int taskPerCloud = task.getValue();
-
-    if (executors == null || executors.isEmpty()) {
-      System.out.println("[ERROR] " + localGroup.name + ": " + taskName + ": No executors");
-    }
-    else if(executors.size() < (localGroup.taskGroupClouds.size() * taskPerCloud)) {
-      System.out.println("[ERROR] " + localGroup.name + ": " + taskName + "number of tasks are less than TaskGroups");
-    }
-    else {
-      int cloudIndex = 0;
-      for (CloudAssignment c : localGroup.taskGroupClouds) {
-
-        List<WorkerSlot> workers = c.getSelectedWorkers();
-
-        if (workers == null || workers.isEmpty()) {
-          System.out.println(localGroup.name + ": " + c.getName() + ": No workers");
-        }
-        else {
-          int startidx = cloudIndex * taskPerCloud;
-          int endidx = startidx + taskPerCloud;
-
-          List<ExecutorDetails> subExecutors = executors.subList(startidx, endidx);
-          System.out.println("---" + c.getName() + "\n" + "-----subExecutors:" + subExecutors);
-
-          deployExecutorToWorkers(workers, subExecutors, executorWorkerMap);
-          executorCloudMap.add(taskName, c.getName());
-
-          for (ExecutorDetails ex : subExecutors) {
-            for(int tID = ex.getStartTask(); tID <= ex.getEndTask(); tID++)
-              c.addTask(tID);
+            c.addTask(ex.getStartTask());
           }
         }
 

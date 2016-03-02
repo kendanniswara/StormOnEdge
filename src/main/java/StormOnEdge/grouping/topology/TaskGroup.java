@@ -16,6 +16,9 @@ public class TaskGroup {
   public String name;
   //public List<String> clouds = new ArrayList<String>();
   public List<CloudAssignment> taskGroupClouds = new ArrayList<CloudAssignment>();
-  public LinkedHashMap<String, Integer> boltsWithParInfo = new LinkedHashMap<String, Integer>();
+
+  //Gives information about each task and how many executor should be placed on each cloud
+  public LinkedHashMap<String, Integer> boltsWithCloudParallelizationInfo = new LinkedHashMap<String, Integer>();
+
   public Set<String> boltDependencies = new HashSet<String>();
 }

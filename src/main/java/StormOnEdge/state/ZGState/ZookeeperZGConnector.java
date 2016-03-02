@@ -1,6 +1,8 @@
 package StormOnEdge.state.ZGState;
 
 import backtype.storm.Config;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.storm.curator.framework.CuratorFramework;
 import org.apache.storm.curator.framework.imps.CuratorFrameworkState;
 import org.mortbay.util.MultiMap;
@@ -23,6 +25,8 @@ import java.util.Map;
 @SuppressWarnings("Duplicates")
 public class ZookeeperZGConnector extends ZGConnector {
 
+  private static final Log LOG = LogFactory.getLog(ZookeeperZGConnector.class);
+
   private String stormID;
 
   private List<String> zooHosts;
@@ -35,6 +39,8 @@ public class ZookeeperZGConnector extends ZGConnector {
   @SuppressWarnings("unchecked")
   public ZookeeperZGConnector(String iD) {
 
+    LOG.info("ZGConnector Created");
+
     stormID = iD;
     storm_conf = Utils.readStormConfig();
 
@@ -44,6 +50,8 @@ public class ZookeeperZGConnector extends ZGConnector {
   }
 
   public void writeInfo() {
+
+    LOG.info("~~~~~~~~~~~~~~~~~~~~~~~~WRITE INFO CALLED~~~~~~~~~~~~");
 
     StringBuilder taskStringBuilder = new StringBuilder();
 
@@ -62,9 +70,16 @@ public class ZookeeperZGConnector extends ZGConnector {
     }
 
     System.out.println(taskStringBuilder.toString());
+    LOG.info(taskStringBuilder.toString());
 
     try {
       resetZKConnection();
+
+      //block until ready
+      while(client.getState() != CuratorFrameworkState.STARTED) {
+        Thread.sleep(500);
+        LOG.info("Waiting for ZK");
+      }
 
       if (client.checkExists().forPath(zkRoot) == null)
         client.create().forPath(zkRoot);
@@ -76,27 +91,39 @@ public class ZookeeperZGConnector extends ZGConnector {
 //      }
 
       client.close();
-    }catch(Exception e){e.printStackTrace();}
+    }catch(Exception e){
+      e.printStackTrace();
+      LOG.info(e.getMessage());
+    }
 
-
+    LOG.info("WRITE FINISHED");
   }
 
   public MultiMap readInfo() {
 
+    LOG.info("READ INFO CALLED");
+
     try {
       resetZKConnection();
+      LOG.info("zkROOT : " + zkRoot);
 
       //block until ready
+      LOG.info("client.getState() : "  + client.getState());
+      LOG.info("client.checkExists() : "  + client.checkExists().forPath(zkRoot));
       while(client.getState() != CuratorFrameworkState.STARTED
-              || client.checkExists().forPath(zkRoot) == null) {
+              || client.checkExists().forPath(zkRoot) == null
+              || client.getData().forPath(zkRoot).length <= 0) {
+        LOG.info("client.getState() : "  + client.getState());
+        LOG.info("client.checkExists() : "  + client.checkExists().forPath(zkRoot));
+        LOG.info("client.getData().forPath(zkRoot) : "  + client.getData().forPath(zkRoot).length);
         Thread.sleep(500);
-        System.out.println("Waiting for ZK");
+        LOG.info("Waiting for ZK");
       }
 
       byte[] data = client.getData().forPath(zkRoot);
 
       String dataString = new String(data);
-      System.out.print("zkConnector : " + dataString);
+      LOG.info("zkConnector : " + dataString);
 
       if(!dataString.isEmpty()) {
 
@@ -105,6 +132,7 @@ public class ZookeeperZGConnector extends ZGConnector {
         //Format:
         //cloudA;1,2,3,4,5
         for (int idx = 0; idx < arrayData.length; idx++) {
+          LOG.debug("arrayData : " + arrayData[idx]);
           String[] pairString = arrayData[idx].split(";");
           if (pairString.length == 2) {
             String key = pairString[0];
@@ -117,7 +145,9 @@ public class ZookeeperZGConnector extends ZGConnector {
       }
 
       client.close();
-    }catch(Exception e){e.printStackTrace();}
+    }catch(Exception e){
+      e.printStackTrace();
+    LOG.info(e.getMessage());}
 
     return tasksByCloudName;
   }
